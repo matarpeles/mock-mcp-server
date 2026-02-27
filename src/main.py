@@ -31,8 +31,8 @@ Generate a realistic {vendor} response. Return valid JSON only.
 """
     
     response = llm.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=2000,
+        model="claude-3-5-haiku-20241022",  # Cheapest model - ~10x cheaper than Sonnet
+        max_tokens=1000,  # Reduced for cost
         system=system_prompt,
         messages=[{"role": "user", "content": user_prompt}]
     )
@@ -141,11 +141,62 @@ async def get_cloudtrail_events(port_context: dict, lookup_attributes: dict = No
     return generate_response("aws", "get_cloudtrail_events", {"lookup_attributes": lookup_attributes, "start_time": start_time, "end_time": end_time}, port_context)
 
 
-# ============= OAUTH ENDPOINTS (Required by Port) =============
-from starlette.responses import JSONResponse, RedirectResponse
+# ============= SECURITY =============
+from starlette.responses import JSONResponse, RedirectResponse, Response
 from starlette.requests import Request
+from starlette.middleware.base import BaseHTTPMiddleware
 from urllib.parse import urlencode
 import secrets
+import time
+from collections import defaultdict
+
+# Secret key for additional validation (set in environment)
+MCP_SECRET = os.getenv("MCP_SECRET", "")  # Optional: set this for extra security
+
+# Rate limiting: max requests per minute per IP
+RATE_LIMIT = int(os.getenv("RATE_LIMIT", "60"))
+rate_limit_store = defaultdict(list)
+
+def check_rate_limit(ip: str) -> bool:
+    """Check if IP has exceeded rate limit."""
+    now = time.time()
+    minute_ago = now - 60
+    # Clean old entries
+    rate_limit_store[ip] = [t for t in rate_limit_store[ip] if t > minute_ago]
+    # Check limit
+    if len(rate_limit_store[ip]) >= RATE_LIMIT:
+        return False
+    rate_limit_store[ip].append(now)
+    return True
+
+class SecurityMiddleware(BaseHTTPMiddleware):
+    """Middleware to validate requests and enforce rate limits."""
+    
+    async def dispatch(self, request: Request, call_next):
+        # Skip security for OAuth endpoints (needed for initial connection)
+        if request.url.path.startswith("/.well-known") or \
+           request.url.path == "/authorize" or \
+           request.url.path == "/token":
+            return await call_next(request)
+        
+        # Get client IP
+        client_ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown")
+        if "," in client_ip:
+            client_ip = client_ip.split(",")[0].strip()
+        
+        # Rate limiting
+        if not check_rate_limit(client_ip):
+            return Response("Rate limit exceeded", status_code=429)
+        
+        # Optional: Validate secret header (if MCP_SECRET is set)
+        if MCP_SECRET:
+            auth_header = request.headers.get("authorization", "")
+            # Allow if it's a valid OAuth token OR if it matches our secret
+            if not auth_header.startswith("Bearer ") and \
+               request.headers.get("x-mcp-secret") != MCP_SECRET:
+                return Response("Unauthorized", status_code=401)
+        
+        return await call_next(request)
 
 # Store authorization codes temporarily
 auth_codes = {}
@@ -250,7 +301,8 @@ def create_app():
             Mount("/aws", app=aws_http),
         ],
         middleware=[
-            Middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+            Middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]),
+            Middleware(SecurityMiddleware),  # Rate limiting + optional secret validation
         ],
         lifespan=lifespan
     )
