@@ -31,8 +31,8 @@ Generate a realistic {vendor} response. Return valid JSON only.
 """
     
     response = llm.messages.create(
-        model="claude-3-5-haiku-20241022",  # Cheapest model - ~10x cheaper than Sonnet
-        max_tokens=1000,  # Reduced for cost
+        model="claude-3-haiku-20240307",  # Cheapest model that definitely works
+        max_tokens=1000,
         system=system_prompt,
         messages=[{"role": "user", "content": user_prompt}]
     )
