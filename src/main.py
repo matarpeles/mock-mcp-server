@@ -166,7 +166,8 @@ import time
 from collections import defaultdict
 
 # Rate limiting: max requests per minute per IP
-RATE_LIMIT = int(os.getenv("RATE_LIMIT", "100"))
+# Set high for demo - multiple users, 4 tools each, parallel usage
+RATE_LIMIT = int(os.getenv("RATE_LIMIT", "1000"))
 rate_limit_store = defaultdict(list)
 
 def check_rate_limit(ip: str) -> bool:
