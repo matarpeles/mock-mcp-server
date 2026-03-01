@@ -13,8 +13,23 @@ def load_prompt(vendor: str) -> str:
         return prompt_file.read_text()
     return f"You are a {vendor} MCP server. Generate realistic responses based on the provided context."
 
+def get_anthropic_api_key() -> str:
+    """Get Anthropic API key from AWS Secrets Manager or environment variable."""
+    # Try environment variable first (for local dev)
+    if api_key := os.getenv("ANTHROPIC_API_KEY"):
+        return api_key
+    
+    # Load from AWS Secrets Manager
+    try:
+        import boto3
+        client = boto3.client("secretsmanager", region_name="eu-west-1")
+        response = client.get_secret_value(SecretId="mock-mcp-server/anthropic-api-key")
+        return response["SecretString"]
+    except Exception as e:
+        raise RuntimeError(f"Failed to get Anthropic API key: {e}")
+
 # Initialize LLM client
-llm = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+llm = Anthropic(api_key=get_anthropic_api_key())
 
 def generate_response(vendor: str, tool_name: str, params: dict, port_context: dict) -> dict:
     """Generate a mock response using LLM."""
