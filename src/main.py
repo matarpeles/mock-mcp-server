@@ -165,11 +165,8 @@ import secrets
 import time
 from collections import defaultdict
 
-# Secret key for additional validation (set in environment)
-MCP_SECRET = os.getenv("MCP_SECRET", "")  # Optional: set this for extra security
-
 # Rate limiting: max requests per minute per IP
-RATE_LIMIT = int(os.getenv("RATE_LIMIT", "60"))
+RATE_LIMIT = int(os.getenv("RATE_LIMIT", "100"))
 rate_limit_store = defaultdict(list)
 
 def check_rate_limit(ip: str) -> bool:
@@ -184,88 +181,26 @@ def check_rate_limit(ip: str) -> bool:
     rate_limit_store[ip].append(now)
     return True
 
-# Port's allowed domains - requests must come from these
-PORT_ALLOWED_DOMAINS = {
-    "getport.io",
-    "api.getport.io",
-    "app.getport.io",
-    "port.io",
-    "api.port.io",
-    "app.port.io",
-}
-
-# Port's egress IPs (EU region) - fallback check
-PORT_ALLOWED_IPS = {
-    "35.156.37.90",
-    "3.71.36.69",
-    "52.58.133.79",
-}
-
-# Security mode: "domain" (check origin/referer), "ip" (check IP), "none" (disabled)
-SECURITY_MODE = os.getenv("SECURITY_MODE", "domain").lower()
-
-def is_port_request(request: Request, client_ip: str) -> bool:
-    """Check if request is from Port (by domain or IP)."""
-    # Check Origin header
-    origin = request.headers.get("origin", "")
-    if any(domain in origin for domain in PORT_ALLOWED_DOMAINS):
-        return True
-    
-    # Check Referer header
-    referer = request.headers.get("referer", "")
-    if any(domain in referer for domain in PORT_ALLOWED_DOMAINS):
-        return True
-    
-    # Check X-Forwarded-Host (sometimes set by proxies)
-    forwarded_host = request.headers.get("x-forwarded-host", "")
-    if any(domain in forwarded_host for domain in PORT_ALLOWED_DOMAINS):
-        return True
-    
-    # Fallback: check IP
-    if client_ip in PORT_ALLOWED_IPS:
-        return True
-    
-    # Allow localhost for development
-    if client_ip in ("127.0.0.1", "localhost", "::1"):
-        return True
-    
-    return False
-
 class SecurityMiddleware(BaseHTTPMiddleware):
-    """Middleware to validate requests from Port only."""
+    """Middleware for rate limiting only - no IP/domain checks for demo simplicity."""
     
     async def dispatch(self, request: Request, call_next):
-        # Get client IP
+        # Get client IP for rate limiting
         client_ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown")
         if "," in client_ip:
             client_ip = client_ip.split(",")[0].strip()
         
-        # Skip security for health checks
-        if request.url.path == "/health":
-            return await call_next(request)
-        
-        # Skip security for OAuth endpoints (needed for initial connection)
-        if request.url.path.startswith("/.well-known") or \
+        # Skip for health checks and OAuth endpoints
+        if request.url.path == "/health" or \
+           request.url.path.startswith("/.well-known") or \
            request.url.path == "/authorize" or \
-           request.url.path == "/token":
+           request.url.path == "/token" or \
+           "/.well-known" in request.url.path:
             return await call_next(request)
         
-        # Enforce Port-only access based on security mode
-        if SECURITY_MODE == "domain" or SECURITY_MODE == "ip":
-            if not is_port_request(request, client_ip):
-                return Response(f"Forbidden - not a Port request (IP: {client_ip})", status_code=403)
-        
-        # Rate limiting
+        # Rate limiting only
         if not check_rate_limit(client_ip):
             return Response("Rate limit exceeded", status_code=429)
-        
-        # Optional: Validate secret header (if MCP_SECRET is set)
-        if MCP_SECRET:
-            auth_header = request.headers.get("authorization", "")
-            # Allow if it's a valid OAuth token OR if it matches our secret
-            if not auth_header.startswith("Bearer ") and \
-               request.headers.get("x-mcp-secret") != MCP_SECRET:
-                return Response("Unauthorized", status_code=401)
         
         return await call_next(request)
 
@@ -345,11 +280,11 @@ def create_app():
                     async with aws_mcp.session_manager.run():
                         yield
     
-    # Get the streamable HTTP apps - they handle /mcp internally
-    datadog_http = datadog_mcp.streamable_http_app()
-    github_http = github_mcp.streamable_http_app()
-    newrelic_http = newrelic_mcp.streamable_http_app()
-    aws_http = aws_mcp.streamable_http_app()
+    # Get the streamable HTTP apps - serve at root path (not /mcp)
+    datadog_http = datadog_mcp.streamable_http_app(path="/")
+    github_http = github_mcp.streamable_http_app(path="/")
+    newrelic_http = newrelic_mcp.streamable_http_app(path="/")
+    aws_http = aws_mcp.streamable_http_app(path="/")
     
     # Health check endpoint (bypasses IP whitelist)
     async def health(request):
