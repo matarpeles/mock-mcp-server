@@ -184,18 +184,55 @@ def check_rate_limit(ip: str) -> bool:
     rate_limit_store[ip].append(now)
     return True
 
-# Port's egress IPs (EU region) - only these can access the server
+# Port's allowed domains - requests must come from these
+PORT_ALLOWED_DOMAINS = {
+    "getport.io",
+    "api.getport.io",
+    "app.getport.io",
+    "port.io",
+    "api.port.io",
+    "app.port.io",
+}
+
+# Port's egress IPs (EU region) - fallback check
 PORT_ALLOWED_IPS = {
     "35.156.37.90",
     "3.71.36.69",
     "52.58.133.79",
 }
 
-# Set to True to enforce IP whitelist (disable for local dev)
-ENFORCE_IP_WHITELIST = os.getenv("ENFORCE_IP_WHITELIST", "true").lower() == "true"
+# Security mode: "domain" (check origin/referer), "ip" (check IP), "none" (disabled)
+SECURITY_MODE = os.getenv("SECURITY_MODE", "domain").lower()
+
+def is_port_request(request: Request, client_ip: str) -> bool:
+    """Check if request is from Port (by domain or IP)."""
+    # Check Origin header
+    origin = request.headers.get("origin", "")
+    if any(domain in origin for domain in PORT_ALLOWED_DOMAINS):
+        return True
+    
+    # Check Referer header
+    referer = request.headers.get("referer", "")
+    if any(domain in referer for domain in PORT_ALLOWED_DOMAINS):
+        return True
+    
+    # Check X-Forwarded-Host (sometimes set by proxies)
+    forwarded_host = request.headers.get("x-forwarded-host", "")
+    if any(domain in forwarded_host for domain in PORT_ALLOWED_DOMAINS):
+        return True
+    
+    # Fallback: check IP
+    if client_ip in PORT_ALLOWED_IPS:
+        return True
+    
+    # Allow localhost for development
+    if client_ip in ("127.0.0.1", "localhost", "::1"):
+        return True
+    
+    return False
 
 class SecurityMiddleware(BaseHTTPMiddleware):
-    """Middleware to validate requests and enforce rate limits + IP whitelist."""
+    """Middleware to validate requests from Port only."""
     
     async def dispatch(self, request: Request, call_next):
         # Get client IP
@@ -203,16 +240,20 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         if "," in client_ip:
             client_ip = client_ip.split(",")[0].strip()
         
-        # Enforce Port IP whitelist (skip for health checks)
-        if ENFORCE_IP_WHITELIST and request.url.path != "/health":
-            if client_ip not in PORT_ALLOWED_IPS and client_ip not in ("127.0.0.1", "localhost"):
-                return Response(f"Forbidden - IP {client_ip} not allowed", status_code=403)
+        # Skip security for health checks
+        if request.url.path == "/health":
+            return await call_next(request)
         
-        # Skip further security for OAuth endpoints (needed for initial connection)
+        # Skip security for OAuth endpoints (needed for initial connection)
         if request.url.path.startswith("/.well-known") or \
            request.url.path == "/authorize" or \
            request.url.path == "/token":
             return await call_next(request)
+        
+        # Enforce Port-only access based on security mode
+        if SECURITY_MODE == "domain" or SECURITY_MODE == "ip":
+            if not is_port_request(request, client_ip):
+                return Response(f"Forbidden - not a Port request (IP: {client_ip})", status_code=403)
         
         # Rate limiting
         if not check_rate_limit(client_ip):
