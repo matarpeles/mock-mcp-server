@@ -1,0 +1,20 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": "*",
+            "Action": "execute-api:Invoke",
+            "Resource": "execute-api:/*",
+            "Condition": {
+                "IpAddress": {
+                    "aws:SourceIp": [
+                        "35.156.37.90/32",
+                        "3.71.36.69/32",
+                        "52.58.133.79/32"
+                    ]
+                }
+            }
+        }
+    ]
+}

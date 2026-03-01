@@ -1,0 +1,35 @@
+{
+    "production": {
+        "app_function": "handler.handler",
+        "aws_region": "eu-west-1",
+        "project_name": "mock-mcp-server",
+        "runtime": "python3.11",
+        "s3_bucket": "zappa-mock-mcp-server",
+        "memory_size": 4096,
+        "timeout_seconds": 300,
+        "keep_warm": true,
+        "keep_warm_expression": "rate(5 minutes)",
+        "domain": "mcp-demo.getport.io",
+        "certificate_arn": "YOUR_ACM_CERTIFICATE_ARN",
+        "environment_variables": {
+            "ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY"
+        },
+        "apigateway_policy": "apigateway_policy.json",
+        "cors": true,
+        "binary_support": false,
+        "exclude": [
+            ".git/*",
+            ".github/*",
+            "__pycache__/*",
+            "*.pyc",
+            ".venv/*",
+            "venv/*",
+            "tests/*",
+            "*.md",
+            "Dockerfile",
+            "docker-compose.yml",
+            "render.yaml",
+            "apprunner.yaml"
+        ]
+    }
+}
