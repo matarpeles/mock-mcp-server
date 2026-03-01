@@ -184,20 +184,35 @@ def check_rate_limit(ip: str) -> bool:
     rate_limit_store[ip].append(now)
     return True
 
+# Port's egress IPs (EU region) - only these can access the server
+PORT_ALLOWED_IPS = {
+    "35.156.37.90",
+    "3.71.36.69",
+    "52.58.133.79",
+}
+
+# Set to True to enforce IP whitelist (disable for local dev)
+ENFORCE_IP_WHITELIST = os.getenv("ENFORCE_IP_WHITELIST", "true").lower() == "true"
+
 class SecurityMiddleware(BaseHTTPMiddleware):
-    """Middleware to validate requests and enforce rate limits."""
+    """Middleware to validate requests and enforce rate limits + IP whitelist."""
     
     async def dispatch(self, request: Request, call_next):
-        # Skip security for OAuth endpoints (needed for initial connection)
-        if request.url.path.startswith("/.well-known") or \
-           request.url.path == "/authorize" or \
-           request.url.path == "/token":
-            return await call_next(request)
-        
         # Get client IP
         client_ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown")
         if "," in client_ip:
             client_ip = client_ip.split(",")[0].strip()
+        
+        # Enforce Port IP whitelist (skip for health checks)
+        if ENFORCE_IP_WHITELIST and request.url.path != "/health":
+            if client_ip not in PORT_ALLOWED_IPS and client_ip not in ("127.0.0.1", "localhost"):
+                return Response(f"Forbidden - IP {client_ip} not allowed", status_code=403)
+        
+        # Skip further security for OAuth endpoints (needed for initial connection)
+        if request.url.path.startswith("/.well-known") or \
+           request.url.path == "/authorize" or \
+           request.url.path == "/token":
+            return await call_next(request)
         
         # Rate limiting
         if not check_rate_limit(client_ip):
@@ -295,8 +310,15 @@ def create_app():
     newrelic_http = newrelic_mcp.streamable_http_app()
     aws_http = aws_mcp.streamable_http_app()
     
+    # Health check endpoint (bypasses IP whitelist)
+    async def health(request):
+        return JSONResponse({"status": "healthy", "service": "mock-mcp-server"})
+    
     app = Starlette(
         routes=[
+            # Health check (for App Runner / load balancers)
+            Route("/health", health, methods=["GET"]),
+            
             # OAuth endpoints at root (for discovery)
             Route("/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
             Route("/authorize", authorize, methods=["GET"]),
