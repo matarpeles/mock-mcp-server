@@ -93,6 +93,26 @@ async def search_datadog_incidents(status: str, port_context: dict, severity: st
     """Search incidents with timeline and impact."""
     return generate_response("datadog", "search_datadog_incidents", {"status": status, "severity": severity}, port_context)
 
+@datadog_mcp.tool()
+async def get_datadog_monitors(port_context: dict, name: str = None, tags: list = None, status: str = None) -> dict:
+    """Get monitors with their current status and alert conditions."""
+    return generate_response("datadog", "get_datadog_monitors", {"name": name, "tags": tags, "status": status}, port_context)
+
+@datadog_mcp.tool()
+async def list_datadog_dashboards(port_context: dict, name: str = None, tags: list = None) -> dict:
+    """List dashboards with their widgets and configurations."""
+    return generate_response("datadog", "list_datadog_dashboards", {"name": name, "tags": tags}, port_context)
+
+@datadog_mcp.tool()
+async def list_datadog_traces(query: str, port_context: dict, service: str = None, from_time: str = None, to_time: str = None) -> dict:
+    """List APM traces with span details and timing."""
+    return generate_response("datadog", "list_datadog_traces", {"query": query, "service": service, "from_time": from_time, "to_time": to_time}, port_context)
+
+@datadog_mcp.tool()
+async def list_datadog_hosts(port_context: dict, filter: str = None, sort_field: str = None) -> dict:
+    """List infrastructure hosts with their metadata and status."""
+    return generate_response("datadog", "list_datadog_hosts", {"filter": filter, "sort_field": sort_field}, port_context)
+
 
 # ============= GITHUB MCP =============
 github_mcp = FastMCP("github-mock", transport_security=security_settings)
@@ -117,6 +137,31 @@ async def search_code(query: str, port_context: dict) -> dict:
     """Search code across repositories."""
     return generate_response("github", "search_code", {"query": query}, port_context)
 
+@github_mcp.tool()
+async def search_issues(query: str, port_context: dict, state: str = "open") -> dict:
+    """Search issues and pull requests across repositories."""
+    return generate_response("github", "search_issues", {"query": query, "state": state}, port_context)
+
+@github_mcp.tool()
+async def get_repository(owner: str, repo: str, port_context: dict) -> dict:
+    """Get repository details including stats, languages, and metadata."""
+    return generate_response("github", "get_repository", {"owner": owner, "repo": repo}, port_context)
+
+@github_mcp.tool()
+async def list_branches(owner: str, repo: str, port_context: dict) -> dict:
+    """List branches in a repository."""
+    return generate_response("github", "list_branches", {"owner": owner, "repo": repo}, port_context)
+
+@github_mcp.tool()
+async def get_workflow_runs(owner: str, repo: str, port_context: dict, workflow_id: str = None, status: str = None) -> dict:
+    """Get GitHub Actions workflow runs for a repository."""
+    return generate_response("github", "get_workflow_runs", {"owner": owner, "repo": repo, "workflow_id": workflow_id, "status": status}, port_context)
+
+@github_mcp.tool()
+async def list_dependabot_alerts(owner: str, repo: str, port_context: dict, state: str = "open", severity: str = None) -> dict:
+    """List Dependabot security alerts for a repository."""
+    return generate_response("github", "list_dependabot_alerts", {"owner": owner, "repo": repo, "state": state, "severity": severity}, port_context)
+
 
 # ============= NEW RELIC MCP =============
 newrelic_mcp = FastMCP("newrelic-mock", transport_security=security_settings)
@@ -136,6 +181,21 @@ async def list_newrelic_error_groups(entity_guid: str, port_context: dict, time_
     """Get error groups from Errors Inbox."""
     return generate_response("newrelic", "list_newrelic_error_groups", {"entity_guid": entity_guid, "time_window": time_window}, port_context)
 
+@newrelic_mcp.tool()
+async def list_newrelic_alerts(port_context: dict, policy_id: str = None, status: str = None) -> dict:
+    """List alert conditions and their current status."""
+    return generate_response("newrelic", "list_newrelic_alerts", {"policy_id": policy_id, "status": status}, port_context)
+
+@newrelic_mcp.tool()
+async def get_newrelic_dashboard(dashboard_guid: str, port_context: dict) -> dict:
+    """Get dashboard with widgets and visualizations."""
+    return generate_response("newrelic", "get_newrelic_dashboard", {"dashboard_guid": dashboard_guid}, port_context)
+
+@newrelic_mcp.tool()
+async def list_newrelic_services(port_context: dict, tags: dict = None) -> dict:
+    """List APM services with their health status and key metrics."""
+    return generate_response("newrelic", "list_newrelic_services", {"tags": tags}, port_context)
+
 
 # ============= AWS MCP =============
 aws_mcp = FastMCP("aws-mock", transport_security=security_settings)
@@ -154,6 +214,21 @@ async def get_cloudwatch_logs(log_group: str, port_context: dict, start_time: st
 async def get_cloudtrail_events(port_context: dict, lookup_attributes: dict = None, start_time: str = None, end_time: str = None) -> dict:
     """Get CloudTrail events."""
     return generate_response("aws", "get_cloudtrail_events", {"lookup_attributes": lookup_attributes, "start_time": start_time, "end_time": end_time}, port_context)
+
+@aws_mcp.tool()
+async def describe_ec2_instances(port_context: dict, instance_ids: list = None, filters: dict = None) -> dict:
+    """Describe EC2 instances with their state, type, and metadata."""
+    return generate_response("aws", "describe_ec2_instances", {"instance_ids": instance_ids, "filters": filters}, port_context)
+
+@aws_mcp.tool()
+async def list_lambda_functions(port_context: dict, function_name: str = None) -> dict:
+    """List Lambda functions with their configuration and runtime."""
+    return generate_response("aws", "list_lambda_functions", {"function_name": function_name}, port_context)
+
+@aws_mcp.tool()
+async def describe_cloudwatch_alarms(port_context: dict, alarm_names: list = None, state: str = None) -> dict:
+    """Describe CloudWatch alarms with their status and thresholds."""
+    return generate_response("aws", "describe_cloudwatch_alarms", {"alarm_names": alarm_names, "state": state}, port_context)
 
 
 # ============= NOTION MCP =============
