@@ -156,6 +156,30 @@ async def get_cloudtrail_events(port_context: dict, lookup_attributes: dict = No
     return generate_response("aws", "get_cloudtrail_events", {"lookup_attributes": lookup_attributes, "start_time": start_time, "end_time": end_time}, port_context)
 
 
+# ============= NOTION MCP =============
+notion_mcp = FastMCP("notion-mock", transport_security=security_settings)
+
+@notion_mcp.tool()
+async def search_notion(query: str, port_context: dict, filter_type: str = None) -> dict:
+    """Search across Notion workspace for pages, databases, and content."""
+    return generate_response("notion", "search_notion", {"query": query, "filter_type": filter_type}, port_context)
+
+@notion_mcp.tool()
+async def query_notion_database(database_id: str, port_context: dict, filter: dict = None, sorts: list = None) -> dict:
+    """Query a Notion database with optional filters and sorting."""
+    return generate_response("notion", "query_notion_database", {"database_id": database_id, "filter": filter, "sorts": sorts}, port_context)
+
+@notion_mcp.tool()
+async def get_notion_page(page_id: str, port_context: dict) -> dict:
+    """Get a Notion page with its properties and content blocks."""
+    return generate_response("notion", "get_notion_page", {"page_id": page_id}, port_context)
+
+@notion_mcp.tool()
+async def list_notion_databases(port_context: dict) -> dict:
+    """List all databases in the Notion workspace."""
+    return generate_response("notion", "list_notion_databases", {}, port_context)
+
+
 # ============= SECURITY =============
 from starlette.responses import JSONResponse, RedirectResponse, Response
 from starlette.requests import Request
@@ -279,13 +303,15 @@ def create_app():
             async with github_mcp.session_manager.run():
                 async with newrelic_mcp.session_manager.run():
                     async with aws_mcp.session_manager.run():
-                        yield
+                        async with notion_mcp.session_manager.run():
+                            yield
     
     # Get the streamable HTTP apps - serve at root path (not /mcp)
     datadog_http = datadog_mcp.streamable_http_app(path="/")
     github_http = github_mcp.streamable_http_app(path="/")
     newrelic_http = newrelic_mcp.streamable_http_app(path="/")
     aws_http = aws_mcp.streamable_http_app(path="/")
+    notion_http = notion_mcp.streamable_http_app(path="/")
     
     # Health check endpoint (bypasses IP whitelist)
     async def health(request):
@@ -306,6 +332,7 @@ def create_app():
             Route("/github/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
             Route("/newrelic/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
             Route("/aws/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
+            Route("/notion/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
             
             # MCP endpoints - Port expects POST/GET directly at /datadog, /github, etc.
             # The streamable_http_app handles /mcp subpath, so we mount it
@@ -313,6 +340,7 @@ def create_app():
             Mount("/github", app=github_http),
             Mount("/newrelic", app=newrelic_http),
             Mount("/aws", app=aws_http),
+            Mount("/notion", app=notion_http),
         ],
         middleware=[
             Middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]),
@@ -328,3 +356,5 @@ if __name__ == "__main__":
     import uvicorn
     app = create_app()
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+
+

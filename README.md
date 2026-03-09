@@ -10,6 +10,7 @@ A mock MCP server that simulates Datadog, GitHub, NewRelic, and AWS observabilit
 | GitHub | `/github/sse` |
 | NewRelic | `/newrelic/sse` |
 | AWS | `/aws/sse` |
+| Notion | `/notion/sse` |
 
 ## Local Development
 
@@ -37,6 +38,7 @@ Your MCP URLs will be:
 - `https://your-app.onrender.com/github/sse`
 - `https://your-app.onrender.com/newrelic/sse`
 - `https://your-app.onrender.com/aws/sse`
+- `https://your-app.onrender.com/notion/sse`
 
 ## Connect to Port
 
