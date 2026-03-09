@@ -381,12 +381,12 @@ def create_app():
                         async with notion_mcp.session_manager.run():
                             yield
     
-    # Get the streamable HTTP apps - serve at root path (not /mcp)
-    datadog_http = datadog_mcp.streamable_http_app(path="/")
-    github_http = github_mcp.streamable_http_app(path="/")
-    newrelic_http = newrelic_mcp.streamable_http_app(path="/")
-    aws_http = aws_mcp.streamable_http_app(path="/")
-    notion_http = notion_mcp.streamable_http_app(path="/")
+    # Get the streamable HTTP apps
+    datadog_http = datadog_mcp.streamable_http_app()
+    github_http = github_mcp.streamable_http_app()
+    newrelic_http = newrelic_mcp.streamable_http_app()
+    aws_http = aws_mcp.streamable_http_app()
+    notion_http = notion_mcp.streamable_http_app()
     
     # Health check endpoint (bypasses IP whitelist)
     async def health(request):
