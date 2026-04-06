@@ -255,6 +255,95 @@ async def list_notion_databases(port_context: dict) -> dict:
     return generate_response("notion", "list_notion_databases", {}, port_context)
 
 
+# ============= FLUXCD MCP =============
+# Mirrors the real Flux Operator MCP Server tools: https://fluxcd.control-plane.io/mcp/tools
+fluxcd_mcp = FastMCP("fluxcd-mock", transport_security=security_settings)
+
+@fluxcd_mcp.tool()
+async def get_flux_instance(port_context: dict) -> dict:
+    """Retrieves detailed information about the Flux installation including distribution version, component status and health, cluster sync statistics."""
+    return generate_response("fluxcd", "get_flux_instance", {}, port_context)
+
+@fluxcd_mcp.tool()
+async def get_kubernetes_resources(apiVersion: str, kind: str, port_context: dict, name: str = None, namespace: str = None, selector: str = None, limit: int = None) -> dict:
+    """Retrieves Kubernetes resources from the cluster, including Flux custom resources, their status, and associated events. Returns YAML format with spec, status conditions, related events, and metadata."""
+    return generate_response("fluxcd", "get_kubernetes_resources", {
+        "apiVersion": apiVersion, "kind": kind, "name": name, 
+        "namespace": namespace, "selector": selector, "limit": limit
+    }, port_context)
+
+@fluxcd_mcp.tool()
+async def get_kubernetes_logs(pod_name: str, pod_namespace: str, container_name: str, port_context: dict, limit: int = 100, previous: bool = False) -> dict:
+    """Retrieves logs from Kubernetes pods for analyzing application behavior and troubleshooting issues. Returns log lines with timestamps and log levels preserved."""
+    return generate_response("fluxcd", "get_kubernetes_logs", {
+        "pod_name": pod_name, "pod_namespace": pod_namespace, 
+        "container_name": container_name, "limit": limit, "previous": previous
+    }, port_context)
+
+@fluxcd_mcp.tool()
+async def get_kubernetes_metrics(pod_namespace: str, port_context: dict, pod_name: str = None, pod_selector: str = None, limit: int = 100) -> dict:
+    """Retrieves CPU and Memory usage for Kubernetes pods. Returns metrics for each container in YAML format."""
+    return generate_response("fluxcd", "get_kubernetes_metrics", {
+        "pod_namespace": pod_namespace, "pod_name": pod_name,
+        "pod_selector": pod_selector, "limit": limit
+    }, port_context)
+
+@fluxcd_mcp.tool()
+async def get_kubernetes_api_versions(port_context: dict) -> dict:
+    """Retrieves the Kubernetes CRDs registered on the cluster and returns the preferred apiVersion for each kind."""
+    return generate_response("fluxcd", "get_kubernetes_api_versions", {}, port_context)
+
+@fluxcd_mcp.tool()
+async def get_kubeconfig_contexts(port_context: dict) -> dict:
+    """Retrieves the available Kubernetes cluster contexts from the kubeconfig."""
+    return generate_response("fluxcd", "get_kubeconfig_contexts", {}, port_context)
+
+@fluxcd_mcp.tool()
+async def set_kubeconfig_context(name: str, port_context: dict) -> dict:
+    """Switches the current session to use a specific Kubernetes cluster context."""
+    return generate_response("fluxcd", "set_kubeconfig_context", {"name": name}, port_context)
+
+@fluxcd_mcp.tool()
+async def reconcile_flux_helmrelease(name: str, namespace: str, port_context: dict, with_source: bool = False) -> dict:
+    """Triggers the reconciliation of a Flux HelmRelease."""
+    return generate_response("fluxcd", "reconcile_flux_helmrelease", {
+        "name": name, "namespace": namespace, "with_source": with_source
+    }, port_context)
+
+@fluxcd_mcp.tool()
+async def reconcile_flux_kustomization(name: str, namespace: str, port_context: dict, with_source: bool = False) -> dict:
+    """Triggers the reconciliation of a Flux Kustomization."""
+    return generate_response("fluxcd", "reconcile_flux_kustomization", {
+        "name": name, "namespace": namespace, "with_source": with_source
+    }, port_context)
+
+@fluxcd_mcp.tool()
+async def reconcile_flux_source(kind: str, name: str, namespace: str, port_context: dict) -> dict:
+    """Triggers the reconciliation of Flux sources (GitRepository, OCIRepository, HelmRepository, HelmChart, Bucket)."""
+    return generate_response("fluxcd", "reconcile_flux_source", {
+        "kind": kind, "name": name, "namespace": namespace
+    }, port_context)
+
+@fluxcd_mcp.tool()
+async def suspend_flux_reconciliation(apiVersion: str, kind: str, name: str, namespace: str, port_context: dict) -> dict:
+    """Suspends the reconciliation of a Flux resource."""
+    return generate_response("fluxcd", "suspend_flux_reconciliation", {
+        "apiVersion": apiVersion, "kind": kind, "name": name, "namespace": namespace
+    }, port_context)
+
+@fluxcd_mcp.tool()
+async def resume_flux_reconciliation(apiVersion: str, kind: str, name: str, namespace: str, port_context: dict) -> dict:
+    """Resumes the reconciliation of a previously suspended Flux resource."""
+    return generate_response("fluxcd", "resume_flux_reconciliation", {
+        "apiVersion": apiVersion, "kind": kind, "name": name, "namespace": namespace
+    }, port_context)
+
+@fluxcd_mcp.tool()
+async def search_flux_docs(query: str, port_context: dict, limit: int = 1) -> dict:
+    """Searches the Flux documentation for specific information."""
+    return generate_response("fluxcd", "search_flux_docs", {"query": query, "limit": limit}, port_context)
+
+
 # ============= SECURITY =============
 from starlette.responses import JSONResponse, RedirectResponse, Response
 from starlette.requests import Request
@@ -379,7 +468,8 @@ def create_app():
                 async with newrelic_mcp.session_manager.run():
                     async with aws_mcp.session_manager.run():
                         async with notion_mcp.session_manager.run():
-                            yield
+                            async with fluxcd_mcp.session_manager.run():
+                                yield
     
     # Get the streamable HTTP apps
     datadog_http = datadog_mcp.streamable_http_app()
@@ -387,6 +477,7 @@ def create_app():
     newrelic_http = newrelic_mcp.streamable_http_app()
     aws_http = aws_mcp.streamable_http_app()
     notion_http = notion_mcp.streamable_http_app()
+    fluxcd_http = fluxcd_mcp.streamable_http_app()
     
     # Health check endpoint (bypasses IP whitelist)
     async def health(request):
@@ -408,6 +499,7 @@ def create_app():
             Route("/newrelic/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
             Route("/aws/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
             Route("/notion/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
+            Route("/fluxcd/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
             
             # MCP endpoints - Port expects POST/GET directly at /datadog, /github, etc.
             # The streamable_http_app handles /mcp subpath, so we mount it
@@ -416,6 +508,7 @@ def create_app():
             Mount("/newrelic", app=newrelic_http),
             Mount("/aws", app=aws_http),
             Mount("/notion", app=notion_http),
+            Mount("/fluxcd", app=fluxcd_http),
         ],
         middleware=[
             Middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]),

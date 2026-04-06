@@ -1,16 +1,34 @@
 # Mock MCP Server for Port Demos
 
-A mock MCP server that simulates Datadog, GitHub, NewRelic, and AWS observability tools for Port's Agentic Engineering Platform demos.
+A mock MCP server that simulates Datadog, GitHub, NewRelic, AWS, Notion, and FluxCD tools for Port's Agentic Engineering Platform demos.
 
 ## Endpoints
 
-| Vendor | URL Path |
-|--------|----------|
-| Datadog | `/datadog/sse` |
-| GitHub | `/github/sse` |
-| NewRelic | `/newrelic/sse` |
-| AWS | `/aws/sse` |
-| Notion | `/notion/sse` |
+| Vendor | URL Path | Description |
+|--------|----------|-------------|
+| Datadog | `/datadog/mcp` | Logs, metrics, APM, monitors |
+| GitHub | `/github/mcp` | PRs, commits, code search, workflows |
+| NewRelic | `/newrelic/mcp` | Entities, NRQL, error groups, alerts |
+| AWS | `/aws/mcp` | CloudWatch, CloudTrail, EC2, Lambda |
+| Notion | `/notion/mcp` | Pages, databases, search |
+| FluxCD | `/fluxcd/mcp` | Flux resources, K8s logs, reconciliation |
+
+## FluxCD Tools
+
+The FluxCD mock mirrors the real [Flux Operator MCP Server](https://fluxcd.control-plane.io/mcp/tools):
+
+| Tool | Description |
+|------|-------------|
+| `get_flux_instance` | Flux installation status, version, components |
+| `get_kubernetes_resources` | HelmRelease, Kustomization, GitRepository status |
+| `get_kubernetes_logs` | Pod container logs with timestamps |
+| `get_kubernetes_metrics` | CPU/Memory usage for pods |
+| `reconcile_flux_helmrelease` | Trigger HelmRelease reconciliation |
+| `reconcile_flux_kustomization` | Trigger Kustomization reconciliation |
+| `reconcile_flux_source` | Trigger source reconciliation |
+| `suspend_flux_reconciliation` | Suspend Flux resource |
+| `resume_flux_reconciliation` | Resume Flux resource |
+| `search_flux_docs` | Search Flux documentation |
 
 ## Local Development
 
@@ -34,14 +52,15 @@ python -m uvicorn src.main:create_app --factory --host 0.0.0.0 --port 8000
 5. Deploy
 
 Your MCP URLs will be:
-- `https://your-app.onrender.com/datadog/sse`
-- `https://your-app.onrender.com/github/sse`
-- `https://your-app.onrender.com/newrelic/sse`
-- `https://your-app.onrender.com/aws/sse`
-- `https://your-app.onrender.com/notion/sse`
+- `https://your-app.onrender.com/datadog/mcp`
+- `https://your-app.onrender.com/github/mcp`
+- `https://your-app.onrender.com/newrelic/mcp`
+- `https://your-app.onrender.com/aws/mcp`
+- `https://your-app.onrender.com/notion/mcp`
+- `https://your-app.onrender.com/fluxcd/mcp`
 
 ## Connect to Port
 
 1. Go to Port → Settings → MCP Connectors
-2. Add connector with URL: `https://your-app.onrender.com/datadog`
+2. Add connector with URL: `https://your-app.onrender.com/fluxcd`
 3. Repeat for other vendors
