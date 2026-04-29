@@ -349,6 +349,141 @@ async def search_flux_docs(query: str, port_context: dict, limit: int = 1) -> di
     return generate_response("fluxcd", "search_flux_docs", {"query": query, "limit": limit}, port_context)
 
 
+# ============= SERVICENOW MCP =============
+# Mirrors common ServiceNow ITSM/ITOM tools based on community implementations
+servicenow_mcp = FastMCP("servicenow-mock", transport_security=security_settings)
+
+@servicenow_mcp.tool()
+async def search_incidents(port_context: dict, query: str = None, state: str = None, priority: str = None, assigned_to: str = None, limit: int = 10) -> dict:
+    """Search incidents with optional filters for state, priority, and assignment."""
+    return generate_response("servicenow", "search_incidents", {
+        "query": query, "state": state, "priority": priority, "assigned_to": assigned_to, "limit": limit
+    }, port_context)
+
+@servicenow_mcp.tool()
+async def get_incident(number: str, port_context: dict) -> dict:
+    """Get detailed information about a specific incident by number (e.g., INC0001234)."""
+    return generate_response("servicenow", "get_incident", {"number": number}, port_context)
+
+@servicenow_mcp.tool()
+async def create_incident(short_description: str, port_context: dict, description: str = None, priority: str = None, category: str = None, assignment_group: str = None, caller_id: str = None) -> dict:
+    """Create a new incident with the specified details."""
+    return generate_response("servicenow", "create_incident", {
+        "short_description": short_description, "description": description, "priority": priority,
+        "category": category, "assignment_group": assignment_group, "caller_id": caller_id
+    }, port_context)
+
+@servicenow_mcp.tool()
+async def update_incident(number: str, port_context: dict, state: str = None, priority: str = None, assigned_to: str = None, work_notes: str = None, comments: str = None) -> dict:
+    """Update an existing incident with new values or add work notes/comments."""
+    return generate_response("servicenow", "update_incident", {
+        "number": number, "state": state, "priority": priority, "assigned_to": assigned_to,
+        "work_notes": work_notes, "comments": comments
+    }, port_context)
+
+@servicenow_mcp.tool()
+async def resolve_incident(number: str, resolution_code: str, resolution_notes: str, port_context: dict) -> dict:
+    """Resolve an incident with a resolution code and notes."""
+    return generate_response("servicenow", "resolve_incident", {
+        "number": number, "resolution_code": resolution_code, "resolution_notes": resolution_notes
+    }, port_context)
+
+@servicenow_mcp.tool()
+async def search_change_requests(port_context: dict, query: str = None, state: str = None, type: str = None, risk: str = None, limit: int = 10) -> dict:
+    """Search change requests with optional filters."""
+    return generate_response("servicenow", "search_change_requests", {
+        "query": query, "state": state, "type": type, "risk": risk, "limit": limit
+    }, port_context)
+
+@servicenow_mcp.tool()
+async def get_change_request(number: str, port_context: dict) -> dict:
+    """Get detailed information about a specific change request by number (e.g., CHG0001234)."""
+    return generate_response("servicenow", "get_change_request", {"number": number}, port_context)
+
+@servicenow_mcp.tool()
+async def create_change_request(short_description: str, type: str, port_context: dict, description: str = None, risk: str = None, impact: str = None, assignment_group: str = None, start_date: str = None, end_date: str = None) -> dict:
+    """Create a new change request (normal, standard, or emergency)."""
+    return generate_response("servicenow", "create_change_request", {
+        "short_description": short_description, "type": type, "description": description,
+        "risk": risk, "impact": impact, "assignment_group": assignment_group,
+        "start_date": start_date, "end_date": end_date
+    }, port_context)
+
+@servicenow_mcp.tool()
+async def search_cmdb_ci(port_context: dict, query: str = None, ci_class: str = None, operational_status: str = None, environment: str = None, limit: int = 10) -> dict:
+    """Search CMDB configuration items with optional filters for class, status, and environment."""
+    return generate_response("servicenow", "search_cmdb_ci", {
+        "query": query, "ci_class": ci_class, "operational_status": operational_status,
+        "environment": environment, "limit": limit
+    }, port_context)
+
+@servicenow_mcp.tool()
+async def get_cmdb_ci(sys_id: str, port_context: dict) -> dict:
+    """Get detailed information about a specific configuration item including relationships."""
+    return generate_response("servicenow", "get_cmdb_ci", {"sys_id": sys_id}, port_context)
+
+@servicenow_mcp.tool()
+async def get_ci_relationships(sys_id: str, port_context: dict, relationship_type: str = None) -> dict:
+    """Get relationships for a configuration item (upstream/downstream dependencies)."""
+    return generate_response("servicenow", "get_ci_relationships", {
+        "sys_id": sys_id, "relationship_type": relationship_type
+    }, port_context)
+
+@servicenow_mcp.tool()
+async def search_knowledge_base(query: str, port_context: dict, category: str = None, limit: int = 10) -> dict:
+    """Search knowledge base articles."""
+    return generate_response("servicenow", "search_knowledge_base", {
+        "query": query, "category": category, "limit": limit
+    }, port_context)
+
+@servicenow_mcp.tool()
+async def get_catalog_items(port_context: dict, category: str = None, query: str = None, limit: int = 20) -> dict:
+    """List available service catalog items with optional filtering."""
+    return generate_response("servicenow", "get_catalog_items", {
+        "category": category, "query": query, "limit": limit
+    }, port_context)
+
+@servicenow_mcp.tool()
+async def order_catalog_item(item_sys_id: str, port_context: dict, variables: dict = None, requested_for: str = None, quantity: int = 1) -> dict:
+    """Submit a service catalog request for an item."""
+    return generate_response("servicenow", "order_catalog_item", {
+        "item_sys_id": item_sys_id, "variables": variables, "requested_for": requested_for, "quantity": quantity
+    }, port_context)
+
+@servicenow_mcp.tool()
+async def get_user(port_context: dict, user_id: str = None, email: str = None, username: str = None) -> dict:
+    """Get user details by sys_id, email, or username."""
+    return generate_response("servicenow", "get_user", {
+        "user_id": user_id, "email": email, "username": username
+    }, port_context)
+
+@servicenow_mcp.tool()
+async def search_problems(port_context: dict, query: str = None, state: str = None, priority: str = None, limit: int = 10) -> dict:
+    """Search problem records with optional filters."""
+    return generate_response("servicenow", "search_problems", {
+        "query": query, "state": state, "priority": priority, "limit": limit
+    }, port_context)
+
+@servicenow_mcp.tool()
+async def get_my_approvals(port_context: dict, state: str = "requested") -> dict:
+    """Get pending approvals for the current user."""
+    return generate_response("servicenow", "get_my_approvals", {"state": state}, port_context)
+
+@servicenow_mcp.tool()
+async def approve_request(approval_sys_id: str, port_context: dict, comments: str = None) -> dict:
+    """Approve a pending approval request."""
+    return generate_response("servicenow", "approve_request", {
+        "approval_sys_id": approval_sys_id, "comments": comments
+    }, port_context)
+
+@servicenow_mcp.tool()
+async def reject_request(approval_sys_id: str, port_context: dict, comments: str = None) -> dict:
+    """Reject a pending approval request."""
+    return generate_response("servicenow", "reject_request", {
+        "approval_sys_id": approval_sys_id, "comments": comments
+    }, port_context)
+
+
 # ============= SECURITY =============
 from starlette.responses import JSONResponse, RedirectResponse, Response
 from starlette.requests import Request
@@ -474,7 +609,8 @@ def create_app():
                     async with aws_mcp.session_manager.run():
                         async with notion_mcp.session_manager.run():
                             async with fluxcd_mcp.session_manager.run():
-                                yield
+                                async with servicenow_mcp.session_manager.run():
+                                    yield
     
     # Get the streamable HTTP apps
     datadog_http = datadog_mcp.streamable_http_app()
@@ -483,6 +619,7 @@ def create_app():
     aws_http = aws_mcp.streamable_http_app()
     notion_http = notion_mcp.streamable_http_app()
     fluxcd_http = fluxcd_mcp.streamable_http_app()
+    servicenow_http = servicenow_mcp.streamable_http_app()
     
     # Health check endpoint (bypasses IP whitelist)
     async def health(request):
@@ -505,6 +642,7 @@ def create_app():
             Route("/aws/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
             Route("/notion/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
             Route("/fluxcd/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
+            Route("/servicenow/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
             
             # MCP endpoints - Port expects POST/GET directly at /datadog, /github, etc.
             # The streamable_http_app handles /mcp subpath, so we mount it
@@ -514,6 +652,7 @@ def create_app():
             Mount("/aws", app=aws_http),
             Mount("/notion", app=notion_http),
             Mount("/fluxcd", app=fluxcd_http),
+            Mount("/servicenow", app=servicenow_http),
         ],
         middleware=[
             Middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]),

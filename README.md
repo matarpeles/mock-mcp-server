@@ -1,6 +1,6 @@
 # Mock MCP Server for Port Demos
 
-A mock MCP server that simulates Datadog, GitHub, NewRelic, AWS, Notion, and FluxCD tools for Port's Agentic Engineering Platform demos.
+A mock MCP server that simulates Datadog, GitHub, NewRelic, AWS, Notion, FluxCD, and ServiceNow tools for Port's Agentic Engineering Platform demos.
 
 ## Endpoints
 
@@ -12,6 +12,7 @@ A mock MCP server that simulates Datadog, GitHub, NewRelic, AWS, Notion, and Flu
 | AWS | `/aws/mcp` | CloudWatch, CloudTrail, EC2, Lambda |
 | Notion | `/notion/mcp` | Pages, databases, search |
 | FluxCD | `/fluxcd/mcp` | Flux resources, K8s logs, reconciliation |
+| ServiceNow | `/servicenow/mcp` | Incidents, changes, CMDB, catalog, approvals |
 
 ## FluxCD Tools
 
@@ -58,6 +59,33 @@ Your MCP URLs will be:
 - `https://your-app.onrender.com/aws/mcp`
 - `https://your-app.onrender.com/notion/mcp`
 - `https://your-app.onrender.com/fluxcd/mcp`
+- `https://your-app.onrender.com/servicenow/mcp`
+
+## ServiceNow Tools
+
+The ServiceNow mock provides ITSM/ITOM tools based on common community implementations:
+
+| Tool | Description |
+|------|-------------|
+| `search_incidents` | Search incidents with filters (state, priority, assigned_to) |
+| `get_incident` | Get incident details by number (INC0001234) |
+| `create_incident` | Create new incident |
+| `update_incident` | Update incident, add work notes/comments |
+| `resolve_incident` | Resolve incident with resolution code |
+| `search_change_requests` | Search change requests |
+| `get_change_request` | Get change request details (CHG0001234) |
+| `create_change_request` | Create normal/standard/emergency change |
+| `search_cmdb_ci` | Search CMDB configuration items |
+| `get_cmdb_ci` | Get CI details |
+| `get_ci_relationships` | Get CI upstream/downstream dependencies |
+| `search_knowledge_base` | Search KB articles |
+| `get_catalog_items` | List service catalog items |
+| `order_catalog_item` | Submit catalog request |
+| `get_user` | Get user by ID, email, or username |
+| `search_problems` | Search problem records |
+| `get_my_approvals` | Get pending approvals |
+| `approve_request` | Approve a request |
+| `reject_request` | Reject a request |
 
 ## Connect to Port
 
