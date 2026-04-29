@@ -31,6 +31,11 @@ def get_anthropic_api_key() -> str:
 # Initialize LLM client
 llm = Anthropic(api_key=get_anthropic_api_key())
 
+# Model configuration - use env var to allow updates without code changes
+# Default to claude-haiku-4-5-20251001 (cheapest current model)
+# Can be overridden via AWS App Runner env var or Secrets Manager
+ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
+
 def generate_response(vendor: str, tool_name: str, params: dict, port_context: dict) -> dict:
     """Generate a mock response using LLM."""
     system_prompt = load_prompt(vendor)
@@ -46,7 +51,7 @@ Generate a realistic {vendor} response. Return valid JSON only.
 """
     
     response = llm.messages.create(
-        model="claude-3-haiku-20240307",  # Cheapest model that definitely works
+        model=ANTHROPIC_MODEL,
         max_tokens=1000,
         system=system_prompt,
         messages=[{"role": "user", "content": user_prompt}]
