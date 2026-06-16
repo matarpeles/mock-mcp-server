@@ -484,6 +484,92 @@ async def reject_request(approval_sys_id: str, port_context: dict, comments: str
     }, port_context)
 
 
+# ============= CONFLUENCE MCP =============
+# Mirrors official Atlassian Rovo MCP read_confluence + search_confluence tools
+# https://support.atlassian.com/atlassian-rovo-mcp-server/docs/supported-tools/
+confluence_mcp = FastMCP("confluence-mock", transport_security=security_settings)
+
+@confluence_mcp.tool()
+async def getConfluencePage(pageId: str, port_context: dict, cloudId: str = None, bodyFormat: str = "storage") -> dict:
+    """Get a Confluence page or live doc by ID."""
+    return generate_response("confluence", "getConfluencePage", {
+        "pageId": pageId, "cloudId": cloudId, "bodyFormat": bodyFormat
+    }, port_context)
+
+@confluence_mcp.tool()
+async def getConfluencePageDescendants(pageId: str, port_context: dict, cloudId: str = None, limit: int = 25, cursor: str = None) -> dict:
+    """List descendant pages under a parent page."""
+    return generate_response("confluence", "getConfluencePageDescendants", {
+        "pageId": pageId, "cloudId": cloudId, "limit": limit, "cursor": cursor
+    }, port_context)
+
+@confluence_mcp.tool()
+async def getConfluencePageFooterComments(pageId: str, port_context: dict, cloudId: str = None, limit: int = 25, cursor: str = None) -> dict:
+    """List footer comments on a page."""
+    return generate_response("confluence", "getConfluencePageFooterComments", {
+        "pageId": pageId, "cloudId": cloudId, "limit": limit, "cursor": cursor
+    }, port_context)
+
+@confluence_mcp.tool()
+async def getConfluencePageInlineComments(pageId: str, port_context: dict, cloudId: str = None, limit: int = 25, cursor: str = None) -> dict:
+    """List inline comments on a page."""
+    return generate_response("confluence", "getConfluencePageInlineComments", {
+        "pageId": pageId, "cloudId": cloudId, "limit": limit, "cursor": cursor
+    }, port_context)
+
+@confluence_mcp.tool()
+async def getConfluenceCommentChildren(commentId: str, port_context: dict, cloudId: str = None, limit: int = 25, cursor: str = None) -> dict:
+    """List child comments (replies) of a comment."""
+    return generate_response("confluence", "getConfluenceCommentChildren", {
+        "commentId": commentId, "cloudId": cloudId, "limit": limit, "cursor": cursor
+    }, port_context)
+
+@confluence_mcp.tool()
+async def getConfluenceSpaces(port_context: dict, cloudId: str = None, limit: int = 25, cursor: str = None) -> dict:
+    """List Confluence spaces."""
+    return generate_response("confluence", "getConfluenceSpaces", {
+        "cloudId": cloudId, "limit": limit, "cursor": cursor
+    }, port_context)
+
+@confluence_mcp.tool()
+async def getPagesInConfluenceSpace(spaceId: str, port_context: dict, cloudId: str = None, limit: int = 25, cursor: str = None) -> dict:
+    """List pages in a space."""
+    return generate_response("confluence", "getPagesInConfluenceSpace", {
+        "spaceId": spaceId, "cloudId": cloudId, "limit": limit, "cursor": cursor
+    }, port_context)
+
+@confluence_mcp.tool()
+async def searchConfluenceUsingCql(cql: str, port_context: dict, cloudId: str = None, limit: int = 25, cursor: str = None) -> dict:
+    """Search Confluence content using CQL."""
+    return generate_response("confluence", "searchConfluenceUsingCql", {
+        "cql": cql, "cloudId": cloudId, "limit": limit, "cursor": cursor
+    }, port_context)
+
+@confluence_mcp.tool()
+async def searchAtlassian(query: str, port_context: dict, cloudId: str = None, limit: int = 25) -> dict:
+    """Search across Jira and Confluence using natural language via Rovo."""
+    return generate_response("confluence", "searchAtlassian", {
+        "query": query, "cloudId": cloudId, "limit": limit
+    }, port_context)
+
+@confluence_mcp.tool()
+async def fetchAtlassian(ari: str, port_context: dict, cloudId: str = None) -> dict:
+    """Fetch Jira or Confluence content by Atlassian Resource Identifier (ARI)."""
+    return generate_response("confluence", "fetchAtlassian", {
+        "ari": ari, "cloudId": cloudId
+    }, port_context)
+
+@confluence_mcp.tool()
+async def atlassianUserInfo(port_context: dict) -> dict:
+    """Get current Atlassian user details, such as account ID."""
+    return generate_response("confluence", "atlassianUserInfo", {}, port_context)
+
+@confluence_mcp.tool()
+async def getAccessibleAtlassianResources(port_context: dict) -> dict:
+    """List Atlassian cloud sites (cloudId) that the user can access."""
+    return generate_response("confluence", "getAccessibleAtlassianResources", {}, port_context)
+
+
 # ============= SECURITY =============
 from starlette.responses import JSONResponse, RedirectResponse, Response
 from starlette.requests import Request
@@ -610,7 +696,8 @@ def create_app():
                         async with notion_mcp.session_manager.run():
                             async with fluxcd_mcp.session_manager.run():
                                 async with servicenow_mcp.session_manager.run():
-                                    yield
+                                    async with confluence_mcp.session_manager.run():
+                                        yield
     
     # Get the streamable HTTP apps
     datadog_http = datadog_mcp.streamable_http_app()
@@ -620,6 +707,7 @@ def create_app():
     notion_http = notion_mcp.streamable_http_app()
     fluxcd_http = fluxcd_mcp.streamable_http_app()
     servicenow_http = servicenow_mcp.streamable_http_app()
+    confluence_http = confluence_mcp.streamable_http_app()
     
     # Health check endpoint (bypasses IP whitelist)
     async def health(request):
@@ -643,6 +731,7 @@ def create_app():
             Route("/notion/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
             Route("/fluxcd/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
             Route("/servicenow/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
+            Route("/confluence/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
             
             # MCP endpoints - Port expects POST/GET directly at /datadog, /github, etc.
             # The streamable_http_app handles /mcp subpath, so we mount it
@@ -653,6 +742,7 @@ def create_app():
             Mount("/notion", app=notion_http),
             Mount("/fluxcd", app=fluxcd_http),
             Mount("/servicenow", app=servicenow_http),
+            Mount("/confluence", app=confluence_http),
         ],
         middleware=[
             Middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]),
