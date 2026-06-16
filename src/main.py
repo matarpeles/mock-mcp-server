@@ -570,6 +570,67 @@ async def getAccessibleAtlassianResources(port_context: dict) -> dict:
     return generate_response("confluence", "getAccessibleAtlassianResources", {}, port_context)
 
 
+# ============= BACKSTAGE MCP =============
+# Mirrors Backstage Portal MCP tools: https://backstage.spotify.com/docs/portal/core-features-and-plugins/mcp/available-tools
+# Catalog lookups use deterministic data; semantic search uses LLM for doc-style results.
+from .backstage_catalog import (
+    get_entity as catalog_get_entity,
+    get_entity_overlay as catalog_get_entity_overlay,
+    get_entity_relations as catalog_get_entity_relations,
+    list_entities as catalog_list_entities,
+    search as catalog_search,
+    search_entities as catalog_search_entities,
+)
+
+backstage_mcp = FastMCP("backstage-mock", transport_security=security_settings)
+
+@backstage_mcp.tool()
+async def search_entities(query: str, port_context: dict, kind: str = None, limit: int = 10) -> dict:
+    """Search for entities in the Backstage software catalog."""
+    entities = catalog_search_entities(query, kind, limit)
+    return {"entities": entities, "total": len(entities), "query": query}
+
+@backstage_mcp.tool()
+async def get_entity(entity_ref: str, port_context: dict) -> dict:
+    """Get a specific catalog entity by reference (e.g. component:default/checkout-service)."""
+    entity = catalog_get_entity(entity_ref)
+    if not entity:
+        return {"error": f"Entity not found: {entity_ref}"}
+    return entity
+
+@backstage_mcp.tool()
+async def get_catalog_entity(entity_ref: str, port_context: dict) -> dict:
+    """Retrieve detailed information about a specific entity in the software catalog (Backstage Portal MCP)."""
+    return await get_entity(entity_ref, port_context)
+
+@backstage_mcp.tool()
+async def list_entities(kind: str, port_context: dict, limit: int = 20) -> dict:
+    """List all catalog entities of a specific kind (Component, API, System, Resource, Group)."""
+    entities = catalog_list_entities(kind, limit)
+    return {"entities": entities, "kind": kind, "total": len(entities)}
+
+@backstage_mcp.tool()
+async def get_entity_relations(entity_ref: str, port_context: dict, relation_type: str = None) -> dict:
+    """Get relations for a catalog entity (dependsOn, providesApis, owner, system)."""
+    return catalog_get_entity_relations(entity_ref, relation_type)
+
+@backstage_mcp.tool()
+async def get_entity_overlay(entity_ref: str, port_context: dict) -> dict:
+    """Retrieve overlay metadata for a catalog entity (maturity, on-call, compliance)."""
+    return catalog_get_entity_overlay(entity_ref)
+
+@backstage_mcp.tool()
+async def search(query: str, port_context: dict, limit: int = 10) -> dict:
+    """Search for information across the software catalog (Backstage Portal MCP)."""
+    return catalog_search(query, limit)
+
+@backstage_mcp.tool()
+async def query_semantic_search_engine(query: str, port_context: dict, limit: int = 5) -> dict:
+    """Perform semantic search across indexed knowledge sources and the software catalog."""
+    return generate_response("backstage", "query_semantic_search_engine",
+        {"query": query, "limit": limit}, port_context)
+
+
 # ============= SECURITY =============
 from starlette.responses import JSONResponse, RedirectResponse, Response
 from starlette.requests import Request
@@ -697,7 +758,8 @@ def create_app():
                             async with fluxcd_mcp.session_manager.run():
                                 async with servicenow_mcp.session_manager.run():
                                     async with confluence_mcp.session_manager.run():
-                                        yield
+                                        async with backstage_mcp.session_manager.run():
+                                            yield
     
     # Get the streamable HTTP apps
     datadog_http = datadog_mcp.streamable_http_app()
@@ -708,6 +770,7 @@ def create_app():
     fluxcd_http = fluxcd_mcp.streamable_http_app()
     servicenow_http = servicenow_mcp.streamable_http_app()
     confluence_http = confluence_mcp.streamable_http_app()
+    backstage_http = backstage_mcp.streamable_http_app()
     
     # Health check endpoint (bypasses IP whitelist)
     async def health(request):
@@ -732,6 +795,7 @@ def create_app():
             Route("/fluxcd/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
             Route("/servicenow/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
             Route("/confluence/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
+            Route("/backstage/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
             
             # MCP endpoints - Port expects POST/GET directly at /datadog, /github, etc.
             # The streamable_http_app handles /mcp subpath, so we mount it
@@ -743,6 +807,7 @@ def create_app():
             Mount("/fluxcd", app=fluxcd_http),
             Mount("/servicenow", app=servicenow_http),
             Mount("/confluence", app=confluence_http),
+            Mount("/backstage", app=backstage_http),
         ],
         middleware=[
             Middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]),

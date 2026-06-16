@@ -1,6 +1,6 @@
 # Mock MCP Server for Port Demos
 
-A mock MCP server that simulates Datadog, GitHub, NewRelic, AWS, Notion, FluxCD, ServiceNow, and Confluence tools for Port's Agentic Engineering Platform demos.
+A mock MCP server that simulates Datadog, GitHub, NewRelic, AWS, Notion, FluxCD, ServiceNow, Confluence, and Backstage tools for Port's Agentic Engineering Platform demos.
 
 ## Endpoints
 
@@ -14,6 +14,7 @@ A mock MCP server that simulates Datadog, GitHub, NewRelic, AWS, Notion, FluxCD,
 | FluxCD | `/fluxcd/mcp` | Flux resources, K8s logs, reconciliation |
 | ServiceNow | `/servicenow/mcp` | Incidents, changes, CMDB, catalog, approvals |
 | Confluence | `/confluence/mcp` | Pages, spaces, CQL search, Rovo search/fetch |
+| Backstage | `/backstage/mcp` | Catalog entities, relations, overlays, search |
 
 ## FluxCD Tools
 
@@ -62,6 +63,32 @@ Your MCP URLs will be:
 - `https://your-app.onrender.com/fluxcd/mcp`
 - `https://your-app.onrender.com/servicenow/mcp`
 - `https://your-app.onrender.com/confluence/mcp`
+- `https://your-app.onrender.com/backstage/mcp`
+
+## Backstage Tools
+
+The Backstage mock mirrors [Backstage Portal MCP tools](https://backstage.spotify.com/docs/portal/core-features-and-plugins/mcp/available-tools). Catalog lookups return deterministic data aligned with other demo vendors (`checkout-service`, `payment-gateway`, etc.).
+
+| Tool | Description |
+|------|-------------|
+| `get_entity` | Get a catalog entity by reference |
+| `get_catalog_entity` | Same as `get_entity` (Portal MCP naming) |
+| `list_entities` | List entities by kind (Component, API, System, Resource, Group) |
+| `search_entities` | Search catalog by keyword and optional kind filter |
+| `search` | Broad catalog search (Portal MCP) |
+| `get_entity_relations` | Get dependsOn, providesApis, owner, system relations |
+| `get_entity_overlay` | Get overlay metadata (maturity, on-call, compliance) |
+| `query_semantic_search_engine` | Semantic search across catalog and docs (LLM) |
+
+### Port workflow pattern
+
+Use Backstage as the **catalog source of truth** and Port as the **workflow engine**:
+
+1. Register Backstage MCP at `https://your-app.onrender.com/backstage`
+2. In a Port AI agent or workflow, call `get_catalog_entity` or `search_entities` to resolve service metadata, owners, and dependencies
+3. Use Port workflows (`trigger_workflow_run`) to orchestrate actions (incident response, scaffolding, approvals) based on Backstage catalog data
+
+This decouples the Port IDP catalog from the agentic engineering platform — Backstage owns entity metadata; Port owns workflow execution.
 
 ## Confluence Tools
 
