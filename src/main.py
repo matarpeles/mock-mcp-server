@@ -570,12 +570,71 @@ async def getAccessibleAtlassianResources(port_context: dict) -> dict:
     return generate_response("confluence", "getAccessibleAtlassianResources", {}, port_context)
 
 
-# ============= SECURITY =============
-from starlette.responses import JSONResponse, RedirectResponse, Response
+# ============= BACKSTAGE MCP =============
+# Mirrors Backstage Portal MCP tools: https://backstage.spotify.com/docs/portal/core-features-and-plugins/mcp/available-tools
+# Catalog lookups use deterministic data; semantic search uses LLM for doc-style results.
+from .backstage_catalog import (
+    get_entity as catalog_get_entity,
+    get_entity_overlay as catalog_get_entity_overlay,
+    get_entity_relations as catalog_get_entity_relations,
+    list_entities as catalog_list_entities,
+    search as catalog_search,
+    search_entities as catalog_search_entities,
+)
+
+backstage_mcp = FastMCP("backstage-mock", transport_security=security_settings)
+
+@backstage_mcp.tool()
+async def search_entities(query: str, port_context: dict, kind: str = None, limit: int = 10) -> dict:
+    """Search for entities in the Backstage software catalog."""
+    entities = catalog_search_entities(query, kind, limit)
+    return {"entities": entities, "total": len(entities), "query": query}
+
+@backstage_mcp.tool()
+async def get_entity(entity_ref: str, port_context: dict) -> dict:
+    """Get a specific catalog entity by reference (e.g. component:default/checkout-service)."""
+    entity = catalog_get_entity(entity_ref)
+    if not entity:
+        return {"error": f"Entity not found: {entity_ref}"}
+    return entity
+
+@backstage_mcp.tool()
+async def get_catalog_entity(entity_ref: str, port_context: dict) -> dict:
+    """Retrieve detailed information about a specific entity in the software catalog (Backstage Portal MCP)."""
+    return await get_entity(entity_ref, port_context)
+
+@backstage_mcp.tool()
+async def list_entities(kind: str, port_context: dict, limit: int = 20) -> dict:
+    """List all catalog entities of a specific kind (Component, API, System, Resource, Group)."""
+    entities = catalog_list_entities(kind, limit)
+    return {"entities": entities, "kind": kind, "total": len(entities)}
+
+@backstage_mcp.tool()
+async def get_entity_relations(entity_ref: str, port_context: dict, relation_type: str = None) -> dict:
+    """Get relations for a catalog entity (dependsOn, providesApis, owner, system)."""
+    return catalog_get_entity_relations(entity_ref, relation_type)
+
+@backstage_mcp.tool()
+async def get_entity_overlay(entity_ref: str, port_context: dict) -> dict:
+    """Retrieve overlay metadata for a catalog entity (maturity, on-call, compliance)."""
+    return catalog_get_entity_overlay(entity_ref)
+
+@backstage_mcp.tool()
+async def search(query: str, port_context: dict, limit: int = 10) -> dict:
+    """Search for information across the software catalog (Backstage Portal MCP)."""
+    return catalog_search(query, limit)
+
+@backstage_mcp.tool()
+async def query_semantic_search_engine(query: str, port_context: dict, limit: int = 5) -> dict:
+    """Perform semantic search across indexed knowledge sources and the software catalog."""
+    return generate_response("backstage", "query_semantic_search_engine",
+        {"query": query, "limit": limit}, port_context)
+
+
+# ============= RATE LIMITING =============
+from starlette.responses import JSONResponse, Response
 from starlette.requests import Request
 from starlette.middleware.base import BaseHTTPMiddleware
-from urllib.parse import urlencode
-import secrets
 import time
 from collections import defaultdict
 
@@ -596,90 +655,26 @@ def check_rate_limit(ip: str) -> bool:
     rate_limit_store[ip].append(now)
     return True
 
-class SecurityMiddleware(BaseHTTPMiddleware):
-    """Middleware for rate limiting only - no IP/domain checks for demo simplicity."""
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    """Middleware for rate limiting only."""
     
     async def dispatch(self, request: Request, call_next):
-        # Get client IP for rate limiting
+        if request.url.path == "/health":
+            return await call_next(request)
+
         client_ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown")
         if "," in client_ip:
             client_ip = client_ip.split(",")[0].strip()
-        
-        # Skip for health checks and OAuth endpoints
-        if request.url.path == "/health" or \
-           request.url.path.startswith("/.well-known") or \
-           request.url.path == "/authorize" or \
-           request.url.path == "/token" or \
-           "/.well-known" in request.url.path:
-            return await call_next(request)
-        
-        # Rate limiting only
+
         if not check_rate_limit(client_ip):
             return Response("Rate limit exceeded", status_code=429)
-        
+
         return await call_next(request)
-
-# Store authorization codes temporarily
-auth_codes = {}
-
-async def oauth_metadata(request: Request):
-    """OAuth 2.0 Authorization Server Metadata - tells Port how to authenticate."""
-    base_url = str(request.base_url).rstrip('/')
-    return JSONResponse({
-        "issuer": base_url,
-        "authorization_endpoint": f"{base_url}/authorize",
-        "token_endpoint": f"{base_url}/token",
-        "response_types_supported": ["code"],
-        "grant_types_supported": ["authorization_code"],
-        "code_challenge_methods_supported": ["S256", "plain"],
-        "token_endpoint_auth_methods_supported": ["client_secret_post", "client_secret_basic"]
-    })
-
-async def authorize(request: Request):
-    """OAuth authorize endpoint - auto-approves and redirects back to Port."""
-    redirect_uri = request.query_params.get("redirect_uri", "")
-    state = request.query_params.get("state", "")
-    code_challenge = request.query_params.get("code_challenge", "")
-    
-    # Generate auth code
-    code = secrets.token_urlsafe(32)
-    auth_codes[code] = {"code_challenge": code_challenge, "redirect_uri": redirect_uri}
-    
-    # Redirect back to Port with the code
-    params = urlencode({"code": code, "state": state})
-    return RedirectResponse(f"{redirect_uri}?{params}", status_code=302)
-
-async def token(request: Request):
-    """OAuth token endpoint - exchanges code for access token."""
-    try:
-        # Handle both form data and JSON
-        content_type = request.headers.get("content-type", "")
-        if "application/json" in content_type:
-            data = await request.json()
-        else:
-            form = await request.form()
-            data = dict(form)
-        
-        code = data.get("code", "")
-        
-        # Validate code exists (basic check)
-        if code and code in auth_codes:
-            del auth_codes[code]  # Use once
-        
-        # Return access token
-        return JSONResponse({
-            "access_token": secrets.token_urlsafe(32),
-            "token_type": "Bearer",
-            "expires_in": 3600,
-            "refresh_token": secrets.token_urlsafe(32)
-        })
-    except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=400)
 
 
 # ============= ROUTER =============
 def create_app():
-    """Create ASGI app with Streamable HTTP transport and OAuth support."""
+    """Create ASGI app with Streamable HTTP transport (no client auth)."""
     from starlette.applications import Starlette
     from starlette.routing import Mount, Route
     from starlette.middleware import Middleware
@@ -697,7 +692,8 @@ def create_app():
                             async with fluxcd_mcp.session_manager.run():
                                 async with servicenow_mcp.session_manager.run():
                                     async with confluence_mcp.session_manager.run():
-                                        yield
+                                        async with backstage_mcp.session_manager.run():
+                                            yield
     
     # Get the streamable HTTP apps
     datadog_http = datadog_mcp.streamable_http_app()
@@ -708,31 +704,15 @@ def create_app():
     fluxcd_http = fluxcd_mcp.streamable_http_app()
     servicenow_http = servicenow_mcp.streamable_http_app()
     confluence_http = confluence_mcp.streamable_http_app()
+    backstage_http = backstage_mcp.streamable_http_app()
     
-    # Health check endpoint (bypasses IP whitelist)
     async def health(request):
         return JSONResponse({"status": "healthy", "service": "mock-mcp-server"})
     
     app = Starlette(
         routes=[
-            # Health check (for App Runner / load balancers)
             Route("/health", health, methods=["GET"]),
-            
-            # OAuth endpoints at root (for discovery)
-            Route("/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
-            Route("/authorize", authorize, methods=["GET"]),
-            Route("/token", token, methods=["POST"]),
-            
-            # OAuth endpoints for each vendor path (Port looks here based on MCP URL)
-            Route("/datadog/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
-            Route("/github/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
-            Route("/newrelic/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
-            Route("/aws/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
-            Route("/notion/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
-            Route("/fluxcd/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
-            Route("/servicenow/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
-            Route("/confluence/.well-known/oauth-authorization-server", oauth_metadata, methods=["GET"]),
-            
+
             # MCP endpoints - Port expects POST/GET directly at /datadog, /github, etc.
             # The streamable_http_app handles /mcp subpath, so we mount it
             Mount("/datadog", app=datadog_http),
@@ -743,10 +723,11 @@ def create_app():
             Mount("/fluxcd", app=fluxcd_http),
             Mount("/servicenow", app=servicenow_http),
             Mount("/confluence", app=confluence_http),
+            Mount("/backstage", app=backstage_http),
         ],
         middleware=[
             Middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]),
-            Middleware(SecurityMiddleware),  # Rate limiting + optional secret validation
+            Middleware(RateLimitMiddleware),
         ],
         lifespan=lifespan
     )
