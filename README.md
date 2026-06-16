@@ -1,6 +1,6 @@
 # Mock MCP Server for Port Demos
 
-A mock MCP server that simulates Datadog, GitHub, NewRelic, AWS, Notion, FluxCD, and ServiceNow tools for Port's Agentic Engineering Platform demos.
+A mock MCP server that simulates Datadog, GitHub, NewRelic, AWS, Notion, FluxCD, ServiceNow, and Confluence tools for Port's Agentic Engineering Platform demos.
 
 ## Endpoints
 
@@ -13,6 +13,7 @@ A mock MCP server that simulates Datadog, GitHub, NewRelic, AWS, Notion, FluxCD,
 | Notion | `/notion/mcp` | Pages, databases, search |
 | FluxCD | `/fluxcd/mcp` | Flux resources, K8s logs, reconciliation |
 | ServiceNow | `/servicenow/mcp` | Incidents, changes, CMDB, catalog, approvals |
+| Confluence | `/confluence/mcp` | Pages, spaces, CQL search, Rovo search/fetch |
 
 ## FluxCD Tools
 
@@ -60,6 +61,28 @@ Your MCP URLs will be:
 - `https://your-app.onrender.com/notion/mcp`
 - `https://your-app.onrender.com/fluxcd/mcp`
 - `https://your-app.onrender.com/servicenow/mcp`
+- `https://your-app.onrender.com/confluence/mcp`
+
+## Confluence Tools
+
+The Confluence mock mirrors the official [Atlassian Rovo MCP Server](https://www.atlassian.com/platform/remote-mcp-server) read-only Confluence tools:
+
+| Tool | Description |
+|------|-------------|
+| `getConfluencePage` | Get a page or live doc by ID with storage-format body |
+| `getConfluencePageDescendants` | List descendant pages under a parent |
+| `getConfluencePageFooterComments` | List footer comments on a page |
+| `getConfluencePageInlineComments` | List inline comments on a page |
+| `getConfluenceCommentChildren` | List reply comments for a parent comment |
+| `getConfluenceSpaces` | List Confluence spaces |
+| `getPagesInConfluenceSpace` | List pages in a space |
+| `searchConfluenceUsingCql` | Search content using CQL |
+| `searchAtlassian` | Natural-language search across Jira and Confluence (Rovo) |
+| `fetchAtlassian` | Fetch content by Atlassian Resource Identifier (ARI) |
+| `atlassianUserInfo` | Get current Atlassian user details |
+| `getAccessibleAtlassianResources` | List accessible Atlassian cloud sites |
+
+Demo content uses Port-style service names (`checkout-service`, `payment-gateway`) across spaces `ENGINEERING`, `PLATFORM`, and `RUNBOOKS`.
 
 ## ServiceNow Tools
 
