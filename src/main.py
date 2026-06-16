@@ -485,89 +485,28 @@ async def reject_request(approval_sys_id: str, port_context: dict, comments: str
 
 
 # ============= CONFLUENCE MCP =============
-# Mirrors official Atlassian Rovo MCP read_confluence + search_confluence tools
-# https://support.atlassian.com/atlassian-rovo-mcp-server/docs/supported-tools/
+# Dummy mock — same pattern as Notion (snake_case tools, LLM-generated responses, no auth)
 confluence_mcp = FastMCP("confluence-mock", transport_security=security_settings)
 
 @confluence_mcp.tool()
-async def getConfluencePage(pageId: str, port_context: dict, cloudId: str = None, bodyFormat: str = "storage") -> dict:
-    """Get a Confluence page or live doc by ID."""
-    return generate_response("confluence", "getConfluencePage", {
-        "pageId": pageId, "cloudId": cloudId, "bodyFormat": bodyFormat
-    }, port_context)
+async def search_confluence(query: str, port_context: dict, space_key: str = None) -> dict:
+    """Search across Confluence for pages, runbooks, and documentation."""
+    return generate_response("confluence", "search_confluence", {"query": query, "space_key": space_key}, port_context)
 
 @confluence_mcp.tool()
-async def getConfluencePageDescendants(pageId: str, port_context: dict, cloudId: str = None, limit: int = 25, cursor: str = None) -> dict:
-    """List descendant pages under a parent page."""
-    return generate_response("confluence", "getConfluencePageDescendants", {
-        "pageId": pageId, "cloudId": cloudId, "limit": limit, "cursor": cursor
-    }, port_context)
+async def get_confluence_page(page_id: str, port_context: dict) -> dict:
+    """Get a Confluence page with content preview."""
+    return generate_response("confluence", "get_confluence_page", {"page_id": page_id}, port_context)
 
 @confluence_mcp.tool()
-async def getConfluencePageFooterComments(pageId: str, port_context: dict, cloudId: str = None, limit: int = 25, cursor: str = None) -> dict:
-    """List footer comments on a page."""
-    return generate_response("confluence", "getConfluencePageFooterComments", {
-        "pageId": pageId, "cloudId": cloudId, "limit": limit, "cursor": cursor
-    }, port_context)
+async def list_confluence_spaces(port_context: dict) -> dict:
+    """List Confluence spaces in the wiki."""
+    return generate_response("confluence", "list_confluence_spaces", {}, port_context)
 
 @confluence_mcp.tool()
-async def getConfluencePageInlineComments(pageId: str, port_context: dict, cloudId: str = None, limit: int = 25, cursor: str = None) -> dict:
-    """List inline comments on a page."""
-    return generate_response("confluence", "getConfluencePageInlineComments", {
-        "pageId": pageId, "cloudId": cloudId, "limit": limit, "cursor": cursor
-    }, port_context)
-
-@confluence_mcp.tool()
-async def getConfluenceCommentChildren(commentId: str, port_context: dict, cloudId: str = None, limit: int = 25, cursor: str = None) -> dict:
-    """List child comments (replies) of a comment."""
-    return generate_response("confluence", "getConfluenceCommentChildren", {
-        "commentId": commentId, "cloudId": cloudId, "limit": limit, "cursor": cursor
-    }, port_context)
-
-@confluence_mcp.tool()
-async def getConfluenceSpaces(port_context: dict, cloudId: str = None, limit: int = 25, cursor: str = None) -> dict:
-    """List Confluence spaces."""
-    return generate_response("confluence", "getConfluenceSpaces", {
-        "cloudId": cloudId, "limit": limit, "cursor": cursor
-    }, port_context)
-
-@confluence_mcp.tool()
-async def getPagesInConfluenceSpace(spaceId: str, port_context: dict, cloudId: str = None, limit: int = 25, cursor: str = None) -> dict:
-    """List pages in a space."""
-    return generate_response("confluence", "getPagesInConfluenceSpace", {
-        "spaceId": spaceId, "cloudId": cloudId, "limit": limit, "cursor": cursor
-    }, port_context)
-
-@confluence_mcp.tool()
-async def searchConfluenceUsingCql(cql: str, port_context: dict, cloudId: str = None, limit: int = 25, cursor: str = None) -> dict:
-    """Search Confluence content using CQL."""
-    return generate_response("confluence", "searchConfluenceUsingCql", {
-        "cql": cql, "cloudId": cloudId, "limit": limit, "cursor": cursor
-    }, port_context)
-
-@confluence_mcp.tool()
-async def searchAtlassian(query: str, port_context: dict, cloudId: str = None, limit: int = 25) -> dict:
-    """Search across Jira and Confluence using natural language via Rovo."""
-    return generate_response("confluence", "searchAtlassian", {
-        "query": query, "cloudId": cloudId, "limit": limit
-    }, port_context)
-
-@confluence_mcp.tool()
-async def fetchAtlassian(ari: str, port_context: dict, cloudId: str = None) -> dict:
-    """Fetch Jira or Confluence content by Atlassian Resource Identifier (ARI)."""
-    return generate_response("confluence", "fetchAtlassian", {
-        "ari": ari, "cloudId": cloudId
-    }, port_context)
-
-@confluence_mcp.tool()
-async def atlassianUserInfo(port_context: dict) -> dict:
-    """Get current Atlassian user details, such as account ID."""
-    return generate_response("confluence", "atlassianUserInfo", {}, port_context)
-
-@confluence_mcp.tool()
-async def getAccessibleAtlassianResources(port_context: dict) -> dict:
-    """List Atlassian cloud sites (cloudId) that the user can access."""
-    return generate_response("confluence", "getAccessibleAtlassianResources", {}, port_context)
+async def get_confluence_page_children(page_id: str, port_context: dict) -> dict:
+    """List child pages under a parent page."""
+    return generate_response("confluence", "get_confluence_page_children", {"page_id": page_id}, port_context)
 
 
 # ============= BACKSTAGE MCP =============

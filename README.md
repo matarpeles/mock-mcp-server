@@ -13,7 +13,7 @@ A mock MCP server that simulates Datadog, GitHub, NewRelic, AWS, Notion, FluxCD,
 | Notion | `/notion/mcp` | Pages, databases, search |
 | FluxCD | `/fluxcd/mcp` | Flux resources, K8s logs, reconciliation |
 | ServiceNow | `/servicenow/mcp` | Incidents, changes, CMDB, catalog, approvals |
-| Confluence | `/confluence/mcp` | Pages, spaces, CQL search, Rovo search/fetch |
+| Confluence | `/confluence/mcp` | Wiki pages, runbooks, spaces, search |
 | Backstage | `/backstage/mcp` | Catalog entities, relations, overlays, search |
 
 ## FluxCD Tools
@@ -92,24 +92,18 @@ This decouples the Port IDP catalog from the agentic engineering platform — Ba
 
 ## Confluence Tools
 
-The Confluence mock mirrors the official [Atlassian Rovo MCP Server](https://www.atlassian.com/platform/remote-mcp-server) read-only Confluence tools:
+Dummy read-only Confluence mock — same pattern as Notion (no real Atlassian connection, no auth):
 
 | Tool | Description |
 |------|-------------|
-| `getConfluencePage` | Get a page or live doc by ID with storage-format body |
-| `getConfluencePageDescendants` | List descendant pages under a parent |
-| `getConfluencePageFooterComments` | List footer comments on a page |
-| `getConfluencePageInlineComments` | List inline comments on a page |
-| `getConfluenceCommentChildren` | List reply comments for a parent comment |
-| `getConfluenceSpaces` | List Confluence spaces |
-| `getPagesInConfluenceSpace` | List pages in a space |
-| `searchConfluenceUsingCql` | Search content using CQL |
-| `searchAtlassian` | Natural-language search across Jira and Confluence (Rovo) |
-| `fetchAtlassian` | Fetch content by Atlassian Resource Identifier (ARI) |
-| `atlassianUserInfo` | Get current Atlassian user details |
-| `getAccessibleAtlassianResources` | List accessible Atlassian cloud sites |
+| `search_confluence` | Search pages, runbooks, and wiki content |
+| `get_confluence_page` | Get a page by ID with content preview |
+| `list_confluence_spaces` | List wiki spaces |
+| `get_confluence_page_children` | List child pages under a parent |
 
 Demo content uses Port-style service names (`checkout-service`, `payment-gateway`) across spaces `ENGINEERING`, `PLATFORM`, and `RUNBOOKS`.
+
+Register in Port as **Custom Server** at `https://your-app.onrender.com/confluence` (no `/mcp` suffix, no headers or OAuth credentials).
 
 ## ServiceNow Tools
 
@@ -139,6 +133,7 @@ The ServiceNow mock provides ITSM/ITOM tools based on common community implement
 
 ## Connect to Port
 
-1. Go to Port → Settings → MCP Connectors
-2. Add connector with URL: `https://your-app.onrender.com/fluxcd`
-3. Repeat for other vendors
+1. Go to Port → Data Sources → MCP Servers → **Custom Server**
+2. Add connector with URL: `https://your-app.onrender.com/fluxcd` (vendor path only, no `/mcp`)
+3. Leave Headers and OAuth credentials empty — these are dummy mocks with no client auth
+4. Repeat for other vendors (`/confluence`, `/notion`, `/backstage`, `/servicenow`, etc.)
