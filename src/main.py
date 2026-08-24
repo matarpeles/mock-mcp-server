@@ -631,6 +631,36 @@ async def query_semantic_search_engine(query: str, port_context: dict, limit: in
         {"query": query, "limit": limit}, port_context)
 
 
+# ============= FIGMA MCP =============
+# Mirrors Figma's real Dev Mode MCP Server: https://developers.figma.com/docs/figma-mcp-server/tools-and-prompts/
+figma_mcp = FastMCP("figma-mock", transport_security=security_settings)
+
+@figma_mcp.tool()
+async def get_metadata(fileKey: str, nodeId: str, port_context: dict) -> dict:
+    """Returns a sparse XML representation of a Figma selection: layer IDs, names, types, position, and sizes. Use this to navigate large files before calling get_design_context on specific child nodes."""
+    return generate_response("figma", "get_metadata", {"fileKey": fileKey, "nodeId": nodeId}, port_context)
+
+@figma_mcp.tool()
+async def get_design_context(fileKey: str, nodeId: str, port_context: dict) -> dict:
+    """Returns structured design-to-code context (React + Tailwind by default) for a Figma node. Also known as get_code."""
+    return generate_response("figma", "get_design_context", {"fileKey": fileKey, "nodeId": nodeId}, port_context)
+
+@figma_mcp.tool()
+async def get_screenshot(fileKey: str, nodeId: str, port_context: dict) -> dict:
+    """Takes a screenshot of a Figma selection for visual reference and layout fidelity checks."""
+    return generate_response("figma", "get_screenshot", {"fileKey": fileKey, "nodeId": nodeId}, port_context)
+
+@figma_mcp.tool()
+async def get_variable_defs(fileKey: str, nodeId: str, port_context: dict) -> dict:
+    """Returns the variables and styles (colors, spacing, typography) used in a Figma selection."""
+    return generate_response("figma", "get_variable_defs", {"fileKey": fileKey, "nodeId": nodeId}, port_context)
+
+@figma_mcp.tool()
+async def get_figma_comments(fileKey: str, port_context: dict) -> dict:
+    """Lists review comments left on a Figma file, including unresolved open questions. Port extension, not part of Figma's real Dev Mode MCP tool set."""
+    return generate_response("figma", "get_figma_comments", {"fileKey": fileKey}, port_context)
+
+
 # ============= RATE LIMITING =============
 from starlette.responses import JSONResponse, Response
 from starlette.requests import Request
@@ -693,7 +723,8 @@ def create_app():
                                 async with servicenow_mcp.session_manager.run():
                                     async with confluence_mcp.session_manager.run():
                                         async with backstage_mcp.session_manager.run():
-                                            yield
+                                            async with figma_mcp.session_manager.run():
+                                                yield
     
     # Get the streamable HTTP apps
     datadog_http = datadog_mcp.streamable_http_app()
@@ -705,6 +736,7 @@ def create_app():
     servicenow_http = servicenow_mcp.streamable_http_app()
     confluence_http = confluence_mcp.streamable_http_app()
     backstage_http = backstage_mcp.streamable_http_app()
+    figma_http = figma_mcp.streamable_http_app()
     
     async def health(request):
         return JSONResponse({"status": "healthy", "service": "mock-mcp-server"})
@@ -724,6 +756,7 @@ def create_app():
             Mount("/servicenow", app=servicenow_http),
             Mount("/confluence", app=confluence_http),
             Mount("/backstage", app=backstage_http),
+            Mount("/figma", app=figma_http),
         ],
         middleware=[
             Middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]),

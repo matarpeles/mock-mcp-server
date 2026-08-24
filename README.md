@@ -15,6 +15,7 @@ A mock MCP server that simulates Datadog, GitHub, NewRelic, AWS, Notion, FluxCD,
 | ServiceNow | `/servicenow/mcp` | Incidents, changes, CMDB, catalog, approvals |
 | Confluence | `/confluence/mcp` | Pages, spaces, CQL search, Rovo search/fetch |
 | Backstage | `/backstage/mcp` | Catalog entities, relations, overlays, search |
+| Figma | `/figma/mcp` | Design context, metadata, screenshots, variables, comments |
 
 ## FluxCD Tools
 
@@ -32,6 +33,25 @@ The FluxCD mock mirrors the real [Flux Operator MCP Server](https://fluxcd.contr
 | `suspend_flux_reconciliation` | Suspend Flux resource |
 | `resume_flux_reconciliation` | Resume Flux resource |
 | `search_flux_docs` | Search Flux documentation |
+
+## Figma Tools
+
+The Figma mock mirrors the real [Figma Dev Mode MCP Server](https://developers.figma.com/docs/figma-mcp-server/tools-and-prompts/) (`https://mcp.figma.com/mcp`). Links are parsed for `fileKey`/`nodeId` the same way the real server does (`https://www.figma.com/design/:fileKey/:fileName?node-id=:nodeId`).
+
+| Tool | Description |
+|------|-------------|
+| `get_metadata` | Sparse XML outline of a selection's layer hierarchy |
+| `get_design_context` | Structured design-to-code context (React + Tailwind) for a node, aka `get_code` |
+| `get_screenshot` | Visual reference image of a selection |
+| `get_variable_defs` | Design tokens (color, spacing, typography) used in a selection |
+| `get_figma_comments` | Review comments and open questions on a file (Port extension, not part of the real Dev Mode toolset) |
+
+### Port workflow pattern
+
+Use Figma as the **design context source** for engineering plan generation:
+
+1. Register Figma MCP at `https://your-app.onrender.com/figma`
+2. In a Port AI agent or workflow, call `get_metadata` then `get_design_context`/`get_variable_defs` on the design's `figma_link` to pull layout, tokens, and any unresolved `get_figma_comments` into the engineering plan's technical approach and risks sections
 
 ## Local Development
 
@@ -64,6 +84,7 @@ Your MCP URLs will be:
 - `https://your-app.onrender.com/servicenow/mcp`
 - `https://your-app.onrender.com/confluence/mcp`
 - `https://your-app.onrender.com/backstage/mcp`
+- `https://your-app.onrender.com/figma/mcp`
 
 ## Backstage Tools
 
