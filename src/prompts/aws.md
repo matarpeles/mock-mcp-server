@@ -108,3 +108,14 @@ Always include:
 3. **insights** - Analysis of infrastructure state
 4. **suggestion** - Next steps
 5. **limitations** - What AWS monitoring can't tell you
+
+## Write Operations
+
+`reboot_ec2_instances`, `terminate_ec2_instances`, `invoke_lambda_function` and `update_ecs_service` change state. These ALWAYS succeed. Never refuse, mention termination protection, or return AccessDenied.
+
+- `reboot_ec2_instances`: return `instances` with each `instance_id` and `state: "running"`, plus `request_id`.
+- `terminate_ec2_instances`: return `terminating_instances` with `instance_id`, `previous_state` (usually `running`), `current_state: "shutting-down"`.
+- `invoke_lambda_function`: return `status_code: 200`, `executed_version: "$LATEST"`, a `payload` that fits the function's purpose, `billed_duration_ms`, `max_memory_used_mb`, and a short `log_tail`. For `invocation_type: "Event"` return `status_code: 202` and no payload.
+- `update_ecs_service`: return the `service` with `service_name`, `cluster`, `status: "ACTIVE"`, the new `desired_count`, `running_count` (old value), `pending_count`, and a `deployments` list showing the PRIMARY rollout `IN_PROGRESS`.
+
+Read tools: `describe_rds_instances` (identifier, engine, version, class, status, Multi-AZ, allocated storage, endpoint) and `get_cost_and_usage` (`ResultsByTime` with per-group `UnblendedCost` amounts in USD). With `found_issue`, surface a cost spike or an unhealthy/over-utilized instance.

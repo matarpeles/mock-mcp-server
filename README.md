@@ -17,6 +17,60 @@ A mock MCP server that simulates Datadog, GitHub, NewRelic, AWS, Notion, FluxCD,
 | Backstage | `/backstage/mcp` | Catalog entities, relations, overlays, search |
 | Figma | `/figma/mcp` | Design context, metadata, screenshots, variables, comments |
 
+## Datadog Tools
+
+Names mirror the [official Datadog MCP server](https://docs.datadoghq.com/mcp_server/tools). The first eight tools are older mock tools and keep their original names.
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `search_datadog_logs`, `get_datadog_metrics`, `get_datadog_service_dependencies`, `search_datadog_incidents`, `get_datadog_monitors`, `list_datadog_dashboards`, `list_datadog_traces`, `list_datadog_hosts` | read | Logs, metrics, dependencies, incidents, monitors, dashboards, traces, hosts |
+| `search_datadog_slos` | read | SLOs with error budget and burn rate |
+| `search_datadog_events` | read | Alerts, deployments, status changes |
+| `create_datadog_monitor` | create | Create a draft monitor |
+| `create_datadog_notebook` | create | Create a notebook |
+| `delete_datadog_notebook` | delete | Soft-delete a notebook (30-day recovery) |
+| `delete_datadog_dashboard` | delete | Permanently delete a dashboard |
+
+## GitHub Tools
+
+Names follow the [official github-mcp-server](https://github.com/github/github-mcp-server).
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `list_pull_requests`, `get_file_content`, `list_commits`, `search_code`, `search_issues`, `get_repository`, `list_branches`, `get_workflow_runs`, `list_dependabot_alerts` | read | Existing read tools |
+| `get_pull_request` | read | PR details with reviews, checks, mergeability |
+| `get_job_logs` | read | Workflow job logs, optionally failed jobs only |
+| `create_issue` | create | Create an issue |
+| `create_pull_request` | create | Open a pull request |
+| `merge_pull_request` | modify | Merge, squash, or rebase a PR |
+| `rerun_workflow_run` | action | Re-run a workflow run or its failed jobs |
+
+## New Relic Tools
+
+Names mirror the [official New Relic MCP server](https://docs.newrelic.com/docs/agentic-ai/mcp/tool-reference/), which is read-only. The three write tools are Port extensions in the same naming style.
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `get_newrelic_entity`, `execute_nrql_query`, `list_newrelic_error_groups`, `list_newrelic_alerts`, `get_newrelic_dashboard`, `list_newrelic_services` | read | Existing read tools |
+| `list_alert_policies` | read | Alert policies for an account |
+| `list_change_events` | read | Deployments and changes for an entity |
+| `analyze_deployment_impact` | read | Golden signals before vs after a deploy |
+| `create_change_event` | create (extension) | Record a deployment marker |
+| `create_alert_condition` | create (extension) | Create an NRQL alert condition |
+| `delete_alert_condition` | delete (extension) | Delete an alert condition |
+
+## AWS Tools
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `get_cloudwatch_metrics`, `get_cloudwatch_logs`, `get_cloudtrail_events`, `describe_ec2_instances`, `list_lambda_functions`, `describe_cloudwatch_alarms` | read | Existing read tools |
+| `describe_rds_instances` | read | RDS instances and status |
+| `get_cost_and_usage` | read | Cost Explorer spend by service/tag |
+| `reboot_ec2_instances` | action | Reboot EC2 instances |
+| `terminate_ec2_instances` | delete | Terminate EC2 instances |
+| `invoke_lambda_function` | action | Invoke a Lambda function |
+| `update_ecs_service` | modify | Change desired count or force a deployment |
+
 ## FluxCD Tools
 
 The FluxCD mock mirrors the real [Flux Operator MCP Server](https://fluxcd.control-plane.io/mcp/tools):

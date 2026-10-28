@@ -118,6 +118,39 @@ async def list_datadog_hosts(port_context: dict, filter: str = None, sort_field:
     """List infrastructure hosts with their metadata and status."""
     return generate_response("datadog", "list_datadog_hosts", {"filter": filter, "sort_field": sort_field}, port_context)
 
+# Tool names below mirror Datadog's official MCP server: https://docs.datadoghq.com/mcp_server/tools
+@datadog_mcp.tool()
+async def search_datadog_slos(port_context: dict, query: str = None, tags: list = None) -> dict:
+    """Search SLOs by name, tags, or type with status, error budget remaining, and burn rate."""
+    return generate_response("datadog", "search_datadog_slos", {"query": query, "tags": tags}, port_context)
+
+@datadog_mcp.tool()
+async def search_datadog_events(query: str, port_context: dict, from_time: str = None, to_time: str = None) -> dict:
+    """Search events such as monitor alerts, deployments, and status changes."""
+    return generate_response("datadog", "search_datadog_events", {"query": query, "from_time": from_time, "to_time": to_time}, port_context)
+
+@datadog_mcp.tool()
+async def create_datadog_monitor(name: str, type: str, query: str, port_context: dict, message: str = None, tags: list = None, priority: int = None) -> dict:
+    """Create a monitor. Monitors are created in draft mode (no notifications, low priority)."""
+    return generate_response("datadog", "create_datadog_monitor", {
+        "name": name, "type": type, "query": query, "message": message, "tags": tags, "priority": priority
+    }, port_context)
+
+@datadog_mcp.tool()
+async def create_datadog_notebook(name: str, cells: list, port_context: dict, time: dict = None, status: str = None) -> dict:
+    """Create a notebook with markdown and metric/log/trace query cells."""
+    return generate_response("datadog", "create_datadog_notebook", {"name": name, "cells": cells, "time": time, "status": status}, port_context)
+
+@datadog_mcp.tool()
+async def delete_datadog_notebook(notebook_id: int, port_context: dict) -> dict:
+    """Soft-delete a notebook by numeric ID. It can be restored within 30 days."""
+    return generate_response("datadog", "delete_datadog_notebook", {"notebook_id": notebook_id}, port_context)
+
+@datadog_mcp.tool()
+async def delete_datadog_dashboard(dashboard_id: str, port_context: dict) -> dict:
+    """Permanently delete a dashboard by ID."""
+    return generate_response("datadog", "delete_datadog_dashboard", {"dashboard_id": dashboard_id}, port_context)
+
 
 # ============= GITHUB MCP =============
 github_mcp = FastMCP("github-mock", transport_security=security_settings)
@@ -167,6 +200,51 @@ async def list_dependabot_alerts(owner: str, repo: str, port_context: dict, stat
     """List Dependabot security alerts for a repository."""
     return generate_response("github", "list_dependabot_alerts", {"owner": owner, "repo": repo, "state": state, "severity": severity}, port_context)
 
+# Tool names below follow the official github-mcp-server: https://github.com/github/github-mcp-server
+@github_mcp.tool()
+async def get_pull_request(owner: str, repo: str, pullNumber: int, port_context: dict) -> dict:
+    """Get details of a pull request including reviews, check runs, mergeability, and diff stats."""
+    return generate_response("github", "get_pull_request", {"owner": owner, "repo": repo, "pullNumber": pullNumber}, port_context)
+
+@github_mcp.tool()
+async def get_job_logs(owner: str, repo: str, port_context: dict, job_id: int = None, run_id: int = None, failed_only: bool = False, tail_lines: int = 500) -> dict:
+    """Download logs for a specific workflow job, or for all failed jobs in a workflow run."""
+    return generate_response("github", "get_job_logs", {
+        "owner": owner, "repo": repo, "job_id": job_id, "run_id": run_id,
+        "failed_only": failed_only, "tail_lines": tail_lines
+    }, port_context)
+
+@github_mcp.tool()
+async def create_issue(owner: str, repo: str, title: str, port_context: dict, body: str = None, assignees: list = None, labels: list = None, milestone: int = None) -> dict:
+    """Create a new issue in a GitHub repository."""
+    return generate_response("github", "create_issue", {
+        "owner": owner, "repo": repo, "title": title, "body": body,
+        "assignees": assignees, "labels": labels, "milestone": milestone
+    }, port_context)
+
+@github_mcp.tool()
+async def create_pull_request(owner: str, repo: str, title: str, head: str, base: str, port_context: dict, body: str = None, draft: bool = False) -> dict:
+    """Create a new pull request in a GitHub repository."""
+    return generate_response("github", "create_pull_request", {
+        "owner": owner, "repo": repo, "title": title, "head": head,
+        "base": base, "body": body, "draft": draft
+    }, port_context)
+
+@github_mcp.tool()
+async def merge_pull_request(owner: str, repo: str, pullNumber: int, port_context: dict, merge_method: str = "merge", commit_title: str = None, commit_message: str = None) -> dict:
+    """Merge a pull request into the target branch (merge, squash, or rebase)."""
+    return generate_response("github", "merge_pull_request", {
+        "owner": owner, "repo": repo, "pullNumber": pullNumber, "merge_method": merge_method,
+        "commit_title": commit_title, "commit_message": commit_message
+    }, port_context)
+
+@github_mcp.tool()
+async def rerun_workflow_run(owner: str, repo: str, run_id: int, port_context: dict, failed_jobs_only: bool = False) -> dict:
+    """Re-run a workflow run, or only its failed jobs."""
+    return generate_response("github", "rerun_workflow_run", {
+        "owner": owner, "repo": repo, "run_id": run_id, "failed_jobs_only": failed_jobs_only
+    }, port_context)
+
 
 # ============= NEW RELIC MCP =============
 newrelic_mcp = FastMCP("newrelic-mock", transport_security=security_settings)
@@ -201,6 +279,46 @@ async def list_newrelic_services(port_context: dict, tags: dict = None) -> dict:
     """List APM services with their health status and key metrics."""
     return generate_response("newrelic", "list_newrelic_services", {"tags": tags}, port_context)
 
+# Tool names below mirror New Relic's official MCP server: https://docs.newrelic.com/docs/agentic-ai/mcp/tool-reference/
+@newrelic_mcp.tool()
+async def list_alert_policies(account_id: int, port_context: dict, name: str = None) -> dict:
+    """Lists alert policies for an account, optionally filtered by name."""
+    return generate_response("newrelic", "list_alert_policies", {"account_id": account_id, "name": name}, port_context)
+
+@newrelic_mcp.tool()
+async def list_change_events(entity_guid: str, port_context: dict, from_time: str = None, to_time: str = None) -> dict:
+    """Lists change events (deployments, config changes) for an application entity."""
+    return generate_response("newrelic", "list_change_events", {"entity_guid": entity_guid, "from_time": from_time, "to_time": to_time}, port_context)
+
+@newrelic_mcp.tool()
+async def analyze_deployment_impact(entity_guid: str, port_context: dict, deployment_timestamp: str = None, time_window: str = "1h") -> dict:
+    """Analyzes a deployment's performance impact on an entity by comparing golden signals before and after."""
+    return generate_response("newrelic", "analyze_deployment_impact", {
+        "entity_guid": entity_guid, "deployment_timestamp": deployment_timestamp, "time_window": time_window
+    }, port_context)
+
+# The official New Relic MCP server is read-only. The tools below are Port demo extensions
+# named in the same style, so agents can exercise create/delete flows.
+@newrelic_mcp.tool()
+async def create_change_event(entity_guid: str, version: str, port_context: dict, description: str = None, commit: str = None, user: str = None) -> dict:
+    """Records a deployment change event (marker) on an application entity. Port extension, not part of New Relic's official MCP tool set."""
+    return generate_response("newrelic", "create_change_event", {
+        "entity_guid": entity_guid, "version": version, "description": description, "commit": commit, "user": user
+    }, port_context)
+
+@newrelic_mcp.tool()
+async def create_alert_condition(policy_id: str, name: str, nrql_query: str, threshold: float, port_context: dict, operator: str = "ABOVE", threshold_duration: int = 300, priority: str = "CRITICAL") -> dict:
+    """Creates a static NRQL alert condition in an alert policy. Port extension, not part of New Relic's official MCP tool set."""
+    return generate_response("newrelic", "create_alert_condition", {
+        "policy_id": policy_id, "name": name, "nrql_query": nrql_query, "threshold": threshold,
+        "operator": operator, "threshold_duration": threshold_duration, "priority": priority
+    }, port_context)
+
+@newrelic_mcp.tool()
+async def delete_alert_condition(condition_id: str, port_context: dict) -> dict:
+    """Deletes an alert condition by ID. Port extension, not part of New Relic's official MCP tool set."""
+    return generate_response("newrelic", "delete_alert_condition", {"condition_id": condition_id}, port_context)
+
 
 # ============= AWS MCP =============
 aws_mcp = FastMCP("aws-mock", transport_security=security_settings)
@@ -234,6 +352,44 @@ async def list_lambda_functions(port_context: dict, function_name: str = None) -
 async def describe_cloudwatch_alarms(port_context: dict, alarm_names: list = None, state: str = None) -> dict:
     """Describe CloudWatch alarms with their status and thresholds."""
     return generate_response("aws", "describe_cloudwatch_alarms", {"alarm_names": alarm_names, "state": state}, port_context)
+
+@aws_mcp.tool()
+async def describe_rds_instances(port_context: dict, db_instance_identifier: str = None, filters: dict = None) -> dict:
+    """Describe RDS DB instances with engine, status, instance class, Multi-AZ, and storage."""
+    return generate_response("aws", "describe_rds_instances", {"db_instance_identifier": db_instance_identifier, "filters": filters}, port_context)
+
+@aws_mcp.tool()
+async def get_cost_and_usage(start_date: str, end_date: str, port_context: dict, granularity: str = "DAILY", group_by: list = None, metrics: list = None) -> dict:
+    """Query Cost Explorer for cost and usage grouped by service, tag, or account."""
+    return generate_response("aws", "get_cost_and_usage", {
+        "start_date": start_date, "end_date": end_date, "granularity": granularity,
+        "group_by": group_by, "metrics": metrics
+    }, port_context)
+
+@aws_mcp.tool()
+async def reboot_ec2_instances(instance_ids: list, port_context: dict) -> dict:
+    """Reboot one or more EC2 instances."""
+    return generate_response("aws", "reboot_ec2_instances", {"instance_ids": instance_ids}, port_context)
+
+@aws_mcp.tool()
+async def terminate_ec2_instances(instance_ids: list, port_context: dict) -> dict:
+    """Terminate one or more EC2 instances. Returns the previous and current state of each."""
+    return generate_response("aws", "terminate_ec2_instances", {"instance_ids": instance_ids}, port_context)
+
+@aws_mcp.tool()
+async def invoke_lambda_function(function_name: str, port_context: dict, payload: dict = None, invocation_type: str = "RequestResponse") -> dict:
+    """Invoke a Lambda function and return the status code, response payload, and log tail."""
+    return generate_response("aws", "invoke_lambda_function", {
+        "function_name": function_name, "payload": payload, "invocation_type": invocation_type
+    }, port_context)
+
+@aws_mcp.tool()
+async def update_ecs_service(cluster: str, service: str, port_context: dict, desired_count: int = None, force_new_deployment: bool = False) -> dict:
+    """Update an ECS service's desired count or force a new deployment."""
+    return generate_response("aws", "update_ecs_service", {
+        "cluster": cluster, "service": service, "desired_count": desired_count,
+        "force_new_deployment": force_new_deployment
+    }, port_context)
 
 
 # ============= NOTION MCP =============
