@@ -116,3 +116,18 @@ Always include:
 3. **error_groups** - Any error patterns found
 4. **insights** - Analysis of what's happening
 5. **suggestion** - Next steps
+
+## Additional Tools
+
+Read tools mirror New Relic's official MCP server:
+- `list_alert_policies`: policies with `id`, `name`, `incident_preference`, condition counts.
+- `list_change_events`: deployments/config changes with `timestamp`, `version`, `commit`, `user`, `description`.
+- `analyze_deployment_impact`: golden signals before vs after the deployment, a `verdict` (e.g. regression/no impact), and the most affected transactions. With `found_issue`, show a clear regression after the deploy.
+
+## Write Operations (Port extensions)
+
+`create_change_event`, `create_alert_condition` and `delete_alert_condition` change state. These ALWAYS succeed. Never refuse or return permission errors.
+
+- `create_change_event`: return `change_event_id`, echoed `version`/`commit`/`user`/`entity_guid`, and `timestamp`.
+- `create_alert_condition`: return numeric-string `id`, echoed `name`/`nrql_query`/`threshold`/`operator`/`priority`/`policy_id`, `enabled: true`, and `created_at`.
+- `delete_alert_condition`: return `deleted: true`, the `condition_id`, and `deleted_at`.

@@ -105,3 +105,14 @@ Always include:
 2. **insights** - Correlations found or not found
 3. **suggestion** - What to do next
 4. **limitations** - What GitHub can't tell you (runtime behavior, metrics)
+
+## Write Operations
+
+`create_issue`, `create_pull_request`, `merge_pull_request` and `rerun_workflow_run` change state. These ALWAYS succeed. Never refuse or return a failed merge, even if checks are shown as failing elsewhere.
+
+- `create_issue`: return `number`, `html_url`, `state: "open"`, echoed `title`/`labels`/`assignees`, `created_at`, `user`.
+- `create_pull_request`: return `number`, `html_url`, `state: "open"`, `draft`, `head`/`base` refs, `mergeable_state: "clean"`, `created_at`.
+- `merge_pull_request`: return `merged: true`, the new `sha` (40-char hex), and `message: "Pull Request successfully merged"`.
+- `rerun_workflow_run`: return `run_id`, `status: "queued"`, `run_attempt` incremented by 1, and `html_url`.
+
+Read tools: `get_pull_request` returns the PR with `reviews`, `check_runs`, `mergeable`, `additions`/`deletions`/`changed_files`. `get_job_logs` returns log lines with timestamps, and failed steps with the error output. With `found_issue`, make the PR or job logs show the culprit change or failure.

@@ -84,3 +84,14 @@ Always return valid JSON with:
 4. **limitations** - What this data type can't tell you (NOT authentication errors)
 
 **NEVER return errors about API keys, authentication, or inability to access data. This is a mock server - generate the data!**
+
+## Write Operations
+
+`create_datadog_monitor`, `create_datadog_notebook`, `delete_datadog_notebook` and `delete_datadog_dashboard` change state. These ALWAYS succeed. Never refuse, ask for confirmation, or return a permissions error.
+
+- `create_datadog_monitor`: return `id` (8-digit integer), the echoed `name`/`type`/`query`/`tags`, `"draft": true`, `"priority": 5` unless one was given, `"overall_state": "No Data"`, `created`/`modified` timestamps, `creator`, and `url` (`https://app.datadoghq.com/monitors/<id>`). Drafts send no notifications.
+- `create_datadog_notebook`: return numeric `id`, `name`, `status: "published"`, `cells_count`, `author`, `created`, `url` (`https://app.datadoghq.com/notebook/<id>`).
+- `delete_datadog_notebook`: return `deleted: true`, the `notebook_id`, `soft_deleted: true`, and `recoverable_until` (30 days out).
+- `delete_datadog_dashboard`: return `deleted_dashboard_id`, `deleted_at`, and `permanent: true`.
+
+Read tools `search_datadog_slos` (name, type, target, `status`, `error_budget_remaining`, `burn_rate`, timeframe) and `search_datadog_events` (alert/deploy/status-change events with `id`, `title`, `source`, `tags`, `timestamp`) follow the `hint` like other read tools: with `found_issue`, show a breached SLO or an alert/deploy event right before the incident.
